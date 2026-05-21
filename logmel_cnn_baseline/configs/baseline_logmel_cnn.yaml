@@ -1,0 +1,39 @@
+seed: 1337
+device: cuda
+
+data:
+  train_audio_root: /home/yht7nf/.cache/kagglehub/datasets/awsaf49/asvpoof-2019-dataset/versions/1/LA/LA/ASVspoof2019_LA_train/flac
+  train_protocol_path: /home/yht7nf/.cache/kagglehub/datasets/awsaf49/asvpoof-2019-dataset/versions/1/LA/LA/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt
+  dev_audio_root: /home/yht7nf/.cache/kagglehub/datasets/awsaf49/asvpoof-2019-dataset/versions/1/LA/LA/ASVspoof2019_LA_dev/flac
+  dev_protocol_path: /home/yht7nf/.cache/kagglehub/datasets/awsaf49/asvpoof-2019-dataset/versions/1/LA/LA/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.dev.trl.txt
+  sample_rate: 16000
+  duration_sec: 4.0
+  file_ext: .flac
+  num_workers: 4
+  limit_train:
+  limit_dev:
+  shuffle_seed: 1337
+  balanced_limit: true
+
+features:
+  n_mels: 128
+  n_fft: 1024
+  win_length_ms: 25
+  hop_length_ms: 10
+  f_min: 20
+  f_max: 7600
+
+model:
+  channels: [32, 64, 128, 128]
+  dropout: 0.25
+
+training:
+  batch_size: 64
+  epochs: 2
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  class_weighting: true
+  threshold: 0.5
+  grad_clip_norm: 5.0
+  output_dir: outputs/runs
+  log_every_steps: 25

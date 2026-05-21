@@ -1,5 +1,3 @@
-UVA MSDS Capstone
-
 # Baseline Model
 
 ## Summary

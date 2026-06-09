@@ -195,3 +195,11 @@ To improve transparency and collaboration, the team has implemented:
 
 **Prepared by:** UVA Deepfake Audio Detection Capstone Team
 
+---
+
+# During Meeting Notes
+
+* Mustufa reviewed Arnav's PDF,
+* remove Mustufa github and then 
+* **What audio file types should we engineer the model to receive as input?**: file types included in A6 and A7 dataset, also A17 and A19 ideally
+* comparison of SHAP and Lime 

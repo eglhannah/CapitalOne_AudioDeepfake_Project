@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=aasist_fast
 # Capstone allocation set up by Daniel Graham (DS 6015). Verify name with `allocations` on Rivanna; personal fallback: mhq8ka_rivanna
-#SBATCH --account=ds6015
+#SBATCH --account=ds2022
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4

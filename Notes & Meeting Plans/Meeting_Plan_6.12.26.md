@@ -267,7 +267,7 @@ The report will include:
 * Modeling and analysis summary.
 * Future work plan.
 
-The team is currently preparing updated materials and incorporating recent project developments.
+The team is drafting an initial version of this report and will finalize for review by the Capital One team by Wednesday (6/17) at 10am.
 
 ---
 

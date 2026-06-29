@@ -21,8 +21,8 @@ from collections import OrderedDict
 import soundfile as sf
 import librosa
 
-
-# from transformers import Wav2Vec2Model
+from models.AASIST import Model as AASISTModel
+from transformers import Wav2Vec2Model
 
 from scipy.optimize import brentq
 from scipy.interpolate import interp1d
@@ -118,20 +118,34 @@ def initialize_wav2vec2(model_name=Wav2Vec2Deepfake, device=DEVICE):
         filter(
             lambda p: p.requires_grad,
             model.parameters()),lr=LR)
-
     scaler = torch.cuda.amp.GradScaler()
     model.eval()
 
     return model
 
 #%%
-def initialize_aasist_model(model_name):
-    model = Wav2Vec2Model.from_pretrained(model_name)
-    model.eval()
-    return model
+def initialize_aasist_model(model_name=, device=DEVICE):
+    model = 
+    ckpt = torch.load(map_location=device, weights_only=False)
+    model = AASISTModel(AASIST_CFG).to(device)
+    model.load_state_dict(ckpt["model"])
+
+    ds = ASVspoofLADataset(
+        items, sample_rate=16000, duration_sec=64600 / 16000, training=False
+    )
+    loader = DataLoader(
+        ds,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True,
+    )
+    return model, loader
+
+
 
 #%%
-def initialize_logmel_model(model_name):
-    model = Wav2Vec2Model.from_pretrained(model_name)
+def initialize_logmel_model(model_name=, device=DEVICE):
+    model = 
     model.eval()
     return model

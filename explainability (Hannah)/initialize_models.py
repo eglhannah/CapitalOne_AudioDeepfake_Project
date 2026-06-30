@@ -29,6 +29,22 @@ from scipy.interpolate import interp1d
 
 from huggingface_hub import hf_hub_download
 
+
+# %%
+aasistV1_model_path=r'https://huggingface.co/arnavjain321/aasist-v1-baseline'
+aasistV1_name='best.pt'
+aasistV1_config_name='congif.json'
+
+
+aasistV2_model_path=r'https://huggingface.co/arnavjain321/aasist-v2-rawboost'
+aasistV2_name='best.pt'
+aasistV2_config_name='congif.json'
+
+wav2vec_model_path=r'https://huggingface.co/rde6mn/no_aug_w2v_4s'
+wav2vec_name='best_model.pth'
+
+logmel_model_path=r'https://huggingface.co/chasecha/logmel_cnn_baseline'
+log_mel_name='logmel_cnn_baseline.pt'
 #%%
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -99,7 +115,7 @@ class ASVSpoofDataset(Dataset, dataset_type="2019"):
         return waveform, torch.tensor(label).long()
     
 
-def initialize_wav2vec2(model_name=Wav2Vec2Deepfake, device=DEVICE):
+def initialize_wav2vec2(model_name=Wav2Vec2Deepfake(), device=DEVICE):
     SR = 16000
     MAX_LEN = 4 * SR
     BATCH_SIZE = 16
@@ -107,18 +123,16 @@ def initialize_wav2vec2(model_name=Wav2Vec2Deepfake, device=DEVICE):
     LR = 1e-5
     NUM_WORKERS = 4
 
-    model = Wav2Vec2Deepfake().to(
-        DEVICE
-    )
-    trained_checkpoint= ## INSERT FROM HF ##
-    checkpoint = torch.load(trained_checkpoint, map_location=DEVICE)
+    model = model_name.to(device)
+    # Download the trained checkpoint from Hugging Face Hub
+    wav2vec_name='best_model.pth'
+    trained_checkpoint=hf_hub_download(
+    repo_id='rde6mn/no_aug_w2v_4s',
+    filename=wav2vec_name)
+
+    # Load the trained checkpoint to intialize the model to the trained weights
+    checkpoint = torch.load(trained_checkpoint, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(
-        filter(
-            lambda p: p.requires_grad,
-            model.parameters()),lr=LR)
-    scaler = torch.cuda.amp.GradScaler()
     model.eval()
 
     return model

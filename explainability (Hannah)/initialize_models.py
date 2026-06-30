@@ -21,7 +21,7 @@ from collections import OrderedDict
 import soundfile as sf
 import librosa
 
-from models.AASIST import Model as AASISTModel
+# from models.AASIST import Model as AASISTModel
 from transformers import Wav2Vec2Model
 
 from scipy.optimize import brentq
@@ -110,7 +110,7 @@ def initialize_wav2vec2(model_name=Wav2Vec2Deepfake, device=DEVICE):
     model = Wav2Vec2Deepfake().to(
         DEVICE
     )
-    trained_checkpoint= ## INSERT FROM HF ##
+    trained_checkpoint= hf_hub_download(repo_id='rde6mn/no_aug_w2v_4s', filename='best_model.pth')
     checkpoint = torch.load(trained_checkpoint, map_location=DEVICE)
     model.load_state_dict(checkpoint["model_state_dict"])
     criterion = nn.CrossEntropyLoss()
@@ -124,20 +124,27 @@ def initialize_wav2vec2(model_name=Wav2Vec2Deepfake, device=DEVICE):
     return model
 
 #%%
-def initialize_aasist_model(model_name=, device=DEVICE):
-    model = 
-    ckpt = torch.load(map_location=device, weights_only=False)
-    model = AASISTModel(AASIST_CFG).to(device)
-    model.load_state_dict(ckpt["model"])
 
+
+
+def initialize_aasist_model(model_name=AASISTModel(), device=DEVICE):
+    model = model_name.to(device)
+    checkpoint = hf_hub_download(
+        repo_id='arnavjain321/aasist-v2-rawboost',
+        filename='best.pt',
+        config_filename='config.json'
+    )
+    checkpoint = torch.load(map_location=device, weights_only=False)
+    model.load_state_dict(checkpoint["model"])
+    batch_size=24
     ds = ASVspoofLADataset(
         items, sample_rate=16000, duration_sec=64600 / 16000, training=False
     )
     loader = DataLoader(
         ds,
-        batch_size=args.batch_size,
+        batch_size=batch_size,
         shuffle=False,
-        num_workers=args.num_workers,
+        num_workers=1,
         pin_memory=True,
     )
     return model, loader
@@ -145,7 +152,3 @@ def initialize_aasist_model(model_name=, device=DEVICE):
 
 
 #%%
-def initialize_logmel_model(model_name=, device=DEVICE):
-    model = 
-    model.eval()
-    return model

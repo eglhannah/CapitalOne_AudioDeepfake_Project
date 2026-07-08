@@ -1,4 +1,4 @@
-"""Generate the two v3 presentation charts. Reads only local files."""
+"""Generate the v3 presentation charts. Reads only local files."""
 import json
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -13,9 +13,17 @@ EER = {
     "2021 DF eval": {"v1": 22.95, "v2": 17.20, "v3": 17.00},
 }
 
+TEAM_EER = {
+    "2019 LA eval": {"aasist_v3": 1.67, "w2v": None,  "ensemble": None},
+    "2021 LA eval": {"aasist_v3": 4.67, "w2v": 4.49, "ensemble": 3.18},
+    "2021 DF eval": {"aasist_v3": 17.01, "w2v": 16.38, "ensemble": 14.87},
+}
+
 V1_COLOR = "#9aa3ab"
 V2_COLOR = "#88a5c8"
 V3_COLOR = "#1f6feb"
+W2V_COLOR = "#d97757"
+ENS_COLOR = "#8a2be2"
 
 def chart_main():
     fig, ax = plt.subplots(figsize=(9, 5.2))
@@ -103,7 +111,57 @@ def chart_la2021_per_codec():
     fig.savefig(p, dpi=180, bbox_inches="tight")
     print(f"wrote {p}")
 
+def chart_team_comparison():
+    fig, ax = plt.subplots(figsize=(9.5, 5.5))
+    benchmarks = list(TEAM_EER.keys())
+    x = np.arange(len(benchmarks))
+    w = 0.26
+    aasist_vals = [TEAM_EER[b]["aasist_v3"] for b in benchmarks]
+    w2v_vals = [TEAM_EER[b]["w2v"] for b in benchmarks]
+    ens_vals = [TEAM_EER[b]["ensemble"] for b in benchmarks]
+
+    def draw(vals, offset, color, label):
+        heights = [v if v is not None else 0 for v in vals]
+        bars = ax.bar(x + offset, heights, w, label=label, color=color, edgecolor="white")
+        for r, v in zip(bars, vals):
+            if v is None:
+                ax.text(r.get_x() + r.get_width() / 2, 0.3, "pending",
+                        ha="center", va="bottom", fontsize=8.5, color="#666", style="italic")
+            else:
+                ax.annotate(f"{v:.2f}%",
+                            xy=(r.get_x() + r.get_width() / 2, v),
+                            xytext=(0, 4), textcoords="offset points",
+                            ha="center", va="bottom", fontsize=9)
+        return bars
+
+    draw(aasist_vals, -w, V3_COLOR, "AASIST v3 (Arnav)")
+    draw(w2v_vals,     0, W2V_COLOR, "w2v (Mohini)")
+    draw(ens_vals,     w, ENS_COLOR, "Ensemble (50/50 score fusion)")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(benchmarks, fontsize=11)
+    ax.set_ylabel("EER (%)  ·  lower is better", fontsize=11)
+    ax.set_title("Team model comparison  ·  ensemble beats best standalone on both 2021 sets",
+                 fontsize=12, pad=14)
+    max_val = max(v for v in aasist_vals + w2v_vals + ens_vals if v is not None)
+    ax.set_ylim(0, max_val * 1.18)
+    ax.legend(loc="upper left", fontsize=10, frameon=False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.grid(axis="y", linestyle=":", alpha=0.5)
+    fig.text(0.5, -0.02,
+             "w2v standalone and ensemble numbers on the intersection of file_ids scored by both models. "
+             "2019 LA eval w2v predictions pending (currently only on train split).",
+             ha="center", fontsize=8, color="#666", style="italic")
+    fig.tight_layout()
+    p = OUT / "v3_chart_team_comparison.png"
+    fig.savefig(p, dpi=180, bbox_inches="tight")
+    plt.close(fig)
+    print(f"wrote {p}")
+
+
 if __name__ == "__main__":
     chart_main()
     chart_la2021()
     chart_la2021_per_codec()
+    chart_team_comparison()

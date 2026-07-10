@@ -35,10 +35,11 @@ Mohini identified a decoder pipeline issue that was silently degrading her 2021 
 
 | Benchmark | w2v (fixed) |
 |---|---|
-| 2021 LA eval | 10.79% |
-| 2021 DF eval | 15.46% |
+| 2019 LA eval | 1.25% |
+| 2021 LA eval | 10.79% (full protocol) / 4.49% (on ensemble join subset) |
+| 2021 DF eval | 15.46% (full protocol) / 16.38% (on ensemble join subset) |
 
-The 2021 DF result meets the ~15% PRD target from the report's C1 section.
+The 2021 DF result meets the ~15% PRD target from the report's C1 section. On 2019 LA eval, w2v beats AASIST v3.
 
 ### Ensemble (score-level fusion of AASIST v3 + w2v)
 
@@ -46,10 +47,11 @@ Linear score fusion of the two model outputs on the intersection of file_ids sco
 
 | Benchmark | AASIST v3 alone | w2v alone (on join) | 50/50 Ensemble | Optimal Ensemble |
 |---|---|---|---|---|
+| 2019 LA eval | 1.67% | 1.25% | **1.02%** | **0.92%** (w2v=0.23) |
 | 2021 LA eval | 4.67% | 4.49% | **3.18%** | **2.84%** (w2v=0.47) |
 | 2021 DF eval | 17.01% | 16.38% | **14.87%** | **14.74%** (w2v=0.76) |
 
-The ensemble improves on the best standalone model by 1.65pp on both benchmarks and clears the PRD target with margin. The models make complementary errors, which is the signal that motivates ensembling.
+**The ensemble beats the best standalone model on every benchmark**, and clears the PRD target on 2021 DF with margin. The models make complementary errors, which is the signal that motivates ensembling. Team comparison chart: `aasist/results/v3_chart_team_comparison.png`.
 
 ### Explainability (Hannah)
 

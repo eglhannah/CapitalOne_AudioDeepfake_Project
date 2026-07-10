@@ -26,16 +26,22 @@ OUT_DIR = REPO_ROOT / "aasist" / "results"
 
 DATASETS = [
     {
-        "name": "2021 DF eval",
-        "slug": "2021_df",
-        "aasist_csv": AASIST_DIR / "v3_2021_DF_eval_predictions.csv",
-        "w2v_csv": W2V_DIR / "test_predictions_fixed2.csv",
+        "name": "2019 LA eval",
+        "slug": "2019_la",
+        "aasist_csv": AASIST_DIR / "v3_2019_LA_eval_predictions.csv",
+        "w2v_csv": W2V_DIR / "test_predictions_LA_2019 (1).csv",
     },
     {
         "name": "2021 LA eval",
         "slug": "2021_la",
         "aasist_csv": AASIST_DIR / "v3_2021_LA_eval_predictions.csv",
         "w2v_csv": W2V_DIR / "test_predictions_LA_2021.csv",
+    },
+    {
+        "name": "2021 DF eval",
+        "slug": "2021_df",
+        "aasist_csv": AASIST_DIR / "v3_2021_DF_eval_predictions.csv",
+        "w2v_csv": W2V_DIR / "test_predictions_fixed2.csv",
     },
 ]
 

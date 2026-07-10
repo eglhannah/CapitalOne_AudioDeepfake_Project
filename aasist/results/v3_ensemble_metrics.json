@@ -1,30 +1,30 @@
 {
-  "2021_df": {
-    "eval_set": "2021 DF eval",
-    "n_joined": 533928,
-    "n_aasist": 533928,
-    "n_w2v": 611829,
-    "n_bonafide": 14869,
-    "n_spoof": 519059,
+  "2019_la": {
+    "eval_set": "2019 LA eval",
+    "n_joined": 71237,
+    "n_aasist": 71237,
+    "n_w2v": 71237,
+    "n_bonafide": 7355,
+    "n_spoof": 63882,
     "standalone": {
       "aasist_v3": {
-        "eer": 0.17006010432047108,
-        "auc": 0.9226529877682911
+        "eer": 0.01668951321725469,
+        "auc": 0.9980510367400499
       },
       "w2v": {
-        "eer": 0.1638309377645563,
-        "auc": 0.9350557363750155
+        "eer": 0.012500139671608578,
+        "auc": 0.9984580467245322
       }
     },
     "ensemble_50_50": {
       "weight_w2v": 0.5,
-      "eer": 0.14865887678254006
+      "eer": 0.010178250556329285
     },
     "ensemble_optimal": {
-      "weight_w2v": 0.755,
-      "weight_aasist": 0.245,
-      "eer": 0.14736869737719477,
-      "improvement_pp_over_best_standalone": 1.6462240387361522
+      "weight_w2v": 0.23,
+      "weight_aasist": 0.77,
+      "eer": 0.00918871046466087,
+      "improvement_pp_over_best_standalone": 0.33114292069477086
     }
   },
   "2021_la": {
@@ -53,6 +53,34 @@
       "weight_aasist": 0.53,
       "eer": 0.028413522209165085,
       "improvement_pp_over_best_standalone": 1.6527686633299663
+    }
+  },
+  "2021_df": {
+    "eval_set": "2021 DF eval",
+    "n_joined": 533928,
+    "n_aasist": 533928,
+    "n_w2v": 611829,
+    "n_bonafide": 14869,
+    "n_spoof": 519059,
+    "standalone": {
+      "aasist_v3": {
+        "eer": 0.17006010432047108,
+        "auc": 0.9226529877682911
+      },
+      "w2v": {
+        "eer": 0.1638309377645563,
+        "auc": 0.9350557363750155
+      }
+    },
+    "ensemble_50_50": {
+      "weight_w2v": 0.5,
+      "eer": 0.14865887678254006
+    },
+    "ensemble_optimal": {
+      "weight_w2v": 0.755,
+      "weight_aasist": 0.245,
+      "eer": 0.14736869737719477,
+      "improvement_pp_over_best_standalone": 1.6462240387361522
     }
   }
 }

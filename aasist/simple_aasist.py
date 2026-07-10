@@ -37,14 +37,17 @@ AASIST_CFG = {
 }
 
 HF_REPO_V3 = "arnavjain321/aasist-v3-codecaugment"
+HF_CKPT_FILENAME = "aasist_v3_best.pt"  # actual filename on HF (uploaded without rename)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def load_aasist_v3(repo_id: str = HF_REPO_V3, device: str = DEVICE):
+def load_aasist_v3(repo_id: str = HF_REPO_V3, filename: str = HF_CKPT_FILENAME, device: str = DEVICE):
     """Return AASIST v3 loaded from HuggingFace in eval mode.
 
     Args:
         repo_id:  swap for arnavjain321/aasist-v1-baseline or -v2-rawboost to load other versions
+        filename: checkpoint filename on the HF repo. v3 uploaded as 'aasist_v3_best.pt';
+                  v1/v2 may use 'best.pt' depending on how they were uploaded
         device:   "cuda" or "cpu"
 
     Returns:

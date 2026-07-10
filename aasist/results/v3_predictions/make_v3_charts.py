@@ -14,7 +14,7 @@ EER = {
 }
 
 TEAM_EER = {
-    "2019 LA eval": {"aasist_v3": 1.67, "w2v": None,  "ensemble": None},
+    "2019 LA eval": {"aasist_v3": 1.67, "w2v": 1.25, "ensemble": 1.02},
     "2021 LA eval": {"aasist_v3": 4.67, "w2v": 4.49, "ensemble": 3.18},
     "2021 DF eval": {"aasist_v3": 17.01, "w2v": 16.38, "ensemble": 14.87},
 }
@@ -141,7 +141,7 @@ def chart_team_comparison():
     ax.set_xticks(x)
     ax.set_xticklabels(benchmarks, fontsize=11)
     ax.set_ylabel("EER (%)  ·  lower is better", fontsize=11)
-    ax.set_title("Team model comparison  ·  ensemble beats best standalone on both 2021 sets",
+    ax.set_title("Team model comparison  ·  ensemble beats best standalone on every benchmark",
                  fontsize=12, pad=14)
     max_val = max(v for v in aasist_vals + w2v_vals + ens_vals if v is not None)
     ax.set_ylim(0, max_val * 1.18)
@@ -151,7 +151,7 @@ def chart_team_comparison():
     ax.grid(axis="y", linestyle=":", alpha=0.5)
     fig.text(0.5, -0.02,
              "w2v standalone and ensemble numbers on the intersection of file_ids scored by both models. "
-             "2019 LA eval w2v predictions pending (currently only on train split).",
+             "Ensemble is 50/50 linear score fusion.",
              ha="center", fontsize=8, color="#666", style="italic")
     fig.tight_layout()
     p = OUT / "v3_chart_team_comparison.png"

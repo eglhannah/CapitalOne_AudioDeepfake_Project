@@ -50,7 +50,7 @@ def load_aasist_v3(repo_id: str = HF_REPO_V3, device: str = DEVICE):
     Returns:
         torch.nn.Module in eval mode on the requested device
     """
-    ckpt_path = hf_hub_download(repo_id=repo_id, filename="best.pt")
+    ckpt_path = hf_hub_download(repo_id=repo_id, filename="aasist_v3_best.pt")
     model = AASISTModel(AASIST_CFG).to(device)
     state = torch.load(ckpt_path, map_location=device, weights_only=False)
     if isinstance(state, dict) and "model" in state:
@@ -98,3 +98,5 @@ def _smoke_test():
 
 if __name__ == "__main__":
     _smoke_test()
+
+

@@ -25,7 +25,6 @@ import sys
 from pathlib import Path
 import pandas as pd
 import shap
-from shap import 
 import numpy as np
 import matplotlib.pyplot as plt
 import shap
@@ -45,7 +44,7 @@ n_params = sum(p.numel() for p in model.parameters())
 print(f"Loaded. Params: {n_params:,}")
 
 #%%
-audio_dir=Path(r"H:\My Drive\ASVSpoof_Data\unzipped2019\LA\LA\ASVspoof2019_LA_dev\flac")
+audio_dir=Path(r"I:\My Drive\ASVSpoof_Data\unzipped2019\LA\LA\ASVspoof2019_LA_dev\flac")
 predictions=[]
 audio_files = list(audio_dir.glob("*.flac"))
 random.shuffle(audio_files)
@@ -63,12 +62,9 @@ for audio in tqdm(audio_files, total=len(audio_files)):
 
 # %%
 predictions = pd.DataFrame(predictions)
-predictions.head()
 predictions.to_csv("aasist_v3_predictions.csv", index=False)
 # %%
-audio_item_path=predictions.iloc[0]
-audio_item=audio_dir/audio_item_path["file"]
-audio, sr = sf.read(audio_item)
+
 
 #%%
 def parse_protocols_LADEV(protocol_file: str) -> dict:
@@ -84,7 +80,7 @@ def parse_protocols_LADEV(protocol_file: str) -> dict:
                 protocols[filename] = label
     return protocols
 
-protocols = parse_protocols_LADEV(r"H:\My Drive\ASVSpoof_Data\unzipped2019\LA\LA\ASVspoof2019_LA_cm_protocols\ASVspoof2019.LA.cm.dev.trl.txt")
+protocols = parse_protocols_LADEV(r"I:\My Drive\ASVSpoof_Data\unzipped2019\LA\LA\ASVspoof2019_LA_cm_protocols\ASVspoof2019.LA.cm.dev.trl.txt")
 protocols_df = pd.DataFrame(list(protocols.items()), columns=['filename', 'groundtruth'])
 protocols_df["groundtruth"].value_counts()
 
@@ -118,9 +114,38 @@ def shap_model(audio):
     out = predict(model, audio_tensor)
     return out["spoof_prob"].detach().cpu().numpy()  # Return numpy array for SHAP
 
-background=torch.stack([
-torch.from_numpy(sf.read(audio_dir/audio_file).read()[0]).float() for audio_file in random.sample(audio_files, 100)
-])
+def fix_length(waveform, target_length=TARGET_LENGTH):
+    length = waveform.shape[0]
+
+    if length < target_length:
+        repeats = (target_length // length) + 1
+        waveform = waveform.repeat(repeats)[:target_length]
+
+    elif length > target_length:
+        waveform = waveform[:target_length]
+
+    return waveform
+
+def create_tensors(audio_files):
+    """Create a tensor of audio samples."""
+    audio_tensors = []
+    for audio in tqdm(audio_files):
+        waveform, sr = sf.read(audio)
+        waveform = torch.from_numpy(waveform).float()
+        # Convert stereo to mono
+        if waveform.ndim > 1:
+            waveform = waveform.mean(dim=1)
+        # Ensure AASIST input size
+        waveform = fix_length(waveform)
+        audio_tensors.append(waveform)
+
+    return torch.stack(audio_tensors)
+
+audio_tensors = create_tensors(audio_files)
+print("Audio tensor shape:", audio_tensors.shape)
+
+
+background=audio_tensors[:100].to(DEVICE)
 
 #%%
 
@@ -154,7 +179,7 @@ for audio in tqdm(audio_files):
     if waveform.ndim > 1:
         waveform = waveform.mean(dim=1)
 
-    waveform = fix_length(waveform)
+    waveform = fix_length(waveform, target_length=64600)
 
     out = predict(model, waveform.unsqueeze(0))
 
@@ -168,20 +193,6 @@ audio_tensors = torch.stack(audio_tensors)
 print(embeddings.shape)
 print(audio_tensors.shape)
 
-def embedding_predict(embedding):
-    logits = model.classifier(embedding)
-    probs = torch.softmax(logits, dim=1)
-    return probs[:,1]
-
-background = embeddings[:100].to(DEVICE)
-samples = audio_tensors[100:110].to(DEVICE)
-
-explainer = shap.DeepExplainer(
-    embedding_predict,
-    background
-)
-
-shap_values = explainer.shap_values(samples)
 # %%
 
 
@@ -199,7 +210,6 @@ head = AASISTHead(model).to(DEVICE)
 head.eval()
 
 background = embeddings[:100].to(DEVICE)
-
 samples = embeddings[100:110].to(DEVICE)
 
 explainer = shap.DeepExplainer(
@@ -237,7 +247,7 @@ shap.plots.waterfall(
 def explain_aasist(idx, shap_values, embeddings, samples, audio_files, protocol):
     
     # Audio/model information
-    waveform = samples[idx].unsqueeze(0).to(DEVICE)
+    waveform = audio_tensors[idx].unsqueeze(0).to(DEVICE)
 
     with torch.no_grad():
         out = predict(model, waveform)
@@ -252,10 +262,10 @@ def explain_aasist(idx, shap_values, embeddings, samples, audio_files, protocol)
     file_name = audio_files[idx].stem
 
     # Find true label
-    protocol_row = protocol[protocol[1] == file_name]
+    protocol_row = protocol[protocol['filename'] == file_name]
 
     if len(protocol_row) > 0:
-        label = protocol_row[4].values[0]
+        label = protocol_row["groundtruth"].values[0]
         label_num = 1 if label == "spoof" else 0
     else:
         label = "unknown"
@@ -266,6 +276,7 @@ def explain_aasist(idx, shap_values, embeddings, samples, audio_files, protocol)
     print(f"True Label: {label_num}: {label}")
     print(f"Predicted Label: {pred}: {pred_label}")
     print(f"Spoof Probability: {spoof_prob:.4f}")
+
 
     # SHAP explanation
     sample_shap = shap_values[idx]
@@ -291,4 +302,10 @@ def explain_aasist(idx, shap_values, embeddings, samples, audio_files, protocol)
     )
 
     
-explain_aasist(0, shap_values, embeddings, samples, audio_files[100:110], protocols_df)
+explain_aasist(idx=5, shap_values=shap_values, embeddings=embeddings, samples=samples, audio_files=audio_files, protocol=protocols_df)
+
+# %%
+print(protocols_df.columns)
+print(protocols_df.head())
+
+# %%

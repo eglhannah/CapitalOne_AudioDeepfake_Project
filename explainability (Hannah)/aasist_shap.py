@@ -127,16 +127,8 @@ feature_summary = summarize_audio_features(extracted_features_df)
 feature_summary.head()
 feature_summary["groundtruth"].value_counts()
 
+feature_summary.to_csv("audiofeature_summary.csv", index=False)
 
-
-sns.boxplot(
-    data=feature_summary,
-    x="groundtruth",
-    y="mfcc_0_mean"
-)
-
-plt.title("MFCC 0 Mean by Class")
-plt.show()
 
 def subplot_features_byclass(df):
     features_to_plot = [
@@ -186,3 +178,5 @@ sns.scatterplot(
 )
 
 plt.show()
+
+extracted_features_df.to_csv("extracted_audio_features.csv", index=False)

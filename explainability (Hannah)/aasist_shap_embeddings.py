@@ -61,8 +61,8 @@ def extract_predictions(audio_dir, model):
             })
     predictions = pd.DataFrame(predictions)
     return predictions, audio_files
-predictions, audio_files = extract_predictions(audio_dir, model)
-predictions.to_csv("aasist_v3_predictions.csv", index=False)
+# predictions, audio_files = extract_predictions(audio_dir, model)
+# predictions.to_csv("aasist_v3_predictions.csv", index=False)
 
 protocol_path = r"I:\My Drive\ASVSpoof_Data\unzipped2019\LA\LA\ASVspoof2019_LA_cm_protocols\ASVspoof2019.LA.cm.dev.trl.txt"
 def parse_protocol(protocol_file: str) -> dict:
@@ -80,8 +80,8 @@ def parse_protocol(protocol_file: str) -> dict:
 
     return protocols_df
 
-protocols_df = parse_protocol(protocol_path)
-protocols_df["groundtruth"].value_counts()
+# protocols_df = parse_protocol(protocol_path)
+# protocols_df["groundtruth"].value_counts()
 
 
 def make_spectrogram(dataset_item):
@@ -103,7 +103,7 @@ def join_protocols_predictions(predictions, protocols_df):
     predictions = predictions.merge(protocols_df, left_on="filename", right_on="filename", how="left")
     return predictions
 
-predictions = join_protocols_predictions(predictions, protocols_df)
+# predictions = join_protocols_predictions(predictions, protocols_df)
 
 def shap_model(audio):
     """Wrapper function to use AASIST model with SHAP."""
@@ -142,7 +142,7 @@ def create_tensors_background(audio_files):
 
     return audio_tensors, background
 
-audio_tensors, background = create_tensors_background(audio_files)
+# audio_tensors, background = create_tensors_background(audio_files)
 
 
 
@@ -183,10 +183,10 @@ def extract_embeddings_audio(audio_files, model, target_length=TARGET_LENGTH) ->
     audio_tensors = torch.stack(audio_tensors)
     return embeddings, audio_tensors
 
-embeddings, audio_tensors= extract_embeddings_audio(audio_files, model)
+# embeddings, audio_tensors= extract_embeddings_audio(audio_files, model)
 
-print(embeddings.shape)
-print(audio_tensors.shape)
+# print(embeddings.shape)
+# print(audio_tensors.shape)
 
 
 def AASISTWrapper(model):
@@ -222,12 +222,38 @@ def AASISTWrapper(model):
     print(shap_values.shape)
     return explainer, shap_values, samples, background
 
-explainer, shap_values, samples, background = AASISTWrapper(model)
+# explainer, shap_values, samples, background = AASISTWrapper(model)
 
-def explain_aasist(idx, shap_values, embeddings, samples, audio_files, protocol):
+def explain_aasist(shap_values, embeddings, samples, audio_files, protocol, idx=4, audio=None):
     
-    # Audio/model information
-    waveform = audio_tensors[idx].unsqueeze(0).to(DEVICE)
+    
+    if idx is None:
+    # implement if using audio from outside asv_spoof dataset
+        if audio is None:
+            raise ValueError("Provide either idx or audio.")
+        waveform = torch.from_numpy(audio).float().unsqueeze(0).to(DEVICE)
+        sample_shap = explainer.shap_values(waveform)[0]
+    
+    elif idx is not None:
+    # implement if using the asv_spoof dataset
+        waveform = audio_tensors[idx].unsqueeze(0).to(DEVICE)
+        # Filename
+        file_name = audio_files[idx].stem
+        sample_shap = shap_values[idx]
+        # Find true label
+        protocol_row = protocol[protocol['filename'] == file_name]
+
+        if len(protocol_row) > 0:
+            label = protocol_row["groundtruth"].values[0]
+            label_num = 1 if label == "spoof" else 0
+        else:
+            label = "unknown"
+            label_num = None
+
+        print(f"File Name: {file_name}")
+        print("-----------------------------")
+        print(f"True Label: {label_num}: {label}")
+        
 
     with torch.no_grad():
         out = predict(model, waveform)
@@ -238,24 +264,9 @@ def explain_aasist(idx, shap_values, embeddings, samples, audio_files, protocol)
     pred = int(torch.argmax(logits))
     pred_label = "spoof" if pred == 1 else "bonafide"
 
-    # Filename
-    file_name = audio_files[idx].stem
-
-    # Find true label
-    protocol_row = protocol[protocol['filename'] == file_name]
-
-    if len(protocol_row) > 0:
-        label = protocol_row["groundtruth"].values[0]
-        label_num = 1 if label == "spoof" else 0
-    else:
-        label = "unknown"
-        label_num = None
-
-    print(f"File Name: {file_name}")
-    print("-----------------------------")
-    print(f"True Label: {label_num}: {label}")
     print(f"Predicted Label: {pred}: {pred_label}")
     print(f"Spoof Probability: {spoof_prob:.4f}")
+
 
 
     # SHAP explanation
@@ -282,5 +293,5 @@ def explain_aasist(idx, shap_values, embeddings, samples, audio_files, protocol)
     )
 
     
-explain_aasist(idx=5, shap_values=shap_values, embeddings=embeddings, samples=samples, audio_files=audio_files, protocol=protocols_df)
+# explain_aasist(idx=5, shap_values=shap_values, embeddings=embeddings, samples=samples, audio_files=audio_files, protocol=protocols_df)
 

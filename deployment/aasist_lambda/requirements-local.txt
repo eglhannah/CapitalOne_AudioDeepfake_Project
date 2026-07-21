@@ -1,0 +1,6 @@
+-r requirements-phase1.txt
+
+# Development-only FFmpeg binary discovery fallback. The Lambda container will
+# install and use its system FFmpeg binary instead.
+imageio-ffmpeg==0.6.0
+

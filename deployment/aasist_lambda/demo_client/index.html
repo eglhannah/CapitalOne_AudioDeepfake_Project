@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AASIST Deepfake Audio Demo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #10131a;
+        --panel: #171c27;
+        --panel-2: #202636;
+        --text: #f6f7fb;
+        --muted: #aeb7ca;
+        --accent: #76e4b3;
+        --accent-2: #79a7ff;
+        --danger: #ff8f8f;
+        --warn: #ffd27d;
+        --border: #334055;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        background:
+          radial-gradient(circle at top left, rgba(118, 228, 179, 0.16), transparent 34rem),
+          radial-gradient(circle at bottom right, rgba(121, 167, 255, 0.16), transparent 30rem),
+          var(--bg);
+        color: var(--text);
+      }
+
+      main {
+        width: min(980px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 48px 0;
+      }
+
+      .hero {
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        color: var(--accent);
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin: 10px 0;
+        font-size: clamp(2rem, 5vw, 4.2rem);
+        line-height: 0.96;
+      }
+
+      .subtitle {
+        max-width: 720px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+        gap: 18px;
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        background: rgba(23, 28, 39, 0.9);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+        padding: 22px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      input[type="url"],
+      input[type="password"] {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 12px 14px;
+        font: inherit;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 0.55fr;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .dropzone {
+        display: grid;
+        min-height: 240px;
+        place-items: center;
+        margin: 16px 0;
+        border: 2px dashed #566278;
+        border-radius: 24px;
+        background: rgba(32, 38, 54, 0.62);
+        text-align: center;
+        transition:
+          border-color 160ms ease,
+          background 160ms ease,
+          transform 160ms ease;
+      }
+
+      .dropzone.dragging {
+        border-color: var(--accent);
+        background: rgba(118, 228, 179, 0.1);
+        transform: translateY(-2px);
+      }
+
+      .dropzone strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 1.16rem;
+      }
+
+      .dropzone span,
+      .hint {
+        color: var(--muted);
+      }
+
+      .file-name {
+        margin-top: 12px;
+        color: var(--accent);
+        word-break: break-word;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #081018;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+        padding: 13px 20px;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        filter: grayscale(0.75);
+        opacity: 0.58;
+      }
+
+      .button-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .status {
+        min-height: 1.4em;
+        color: var(--muted);
+      }
+
+      .result {
+        display: grid;
+        gap: 14px;
+      }
+
+      .verdict {
+        border-radius: 20px;
+        padding: 18px;
+        background: var(--panel-2);
+      }
+
+      .verdict .label {
+        color: var(--muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+      }
+
+      .verdict .value {
+        margin-top: 4px;
+        font-size: 2.4rem;
+        font-weight: 900;
+        text-transform: capitalize;
+      }
+
+      .spoof .value {
+        color: var(--danger);
+      }
+
+      .bonafide .value {
+        color: var(--accent);
+      }
+
+      .meter {
+        height: 16px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #0c1018;
+      }
+
+      .meter-fill {
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--accent), var(--warn), var(--danger));
+        transition: width 220ms ease;
+      }
+
+      dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px 16px;
+        margin: 0;
+      }
+
+      dt {
+        color: var(--muted);
+      }
+
+      dd {
+        margin: 0;
+        text-align: right;
+      }
+
+      .error {
+        color: var(--danger);
+      }
+
+      .footnote {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 760px) {
+        main {
+          padding: 30px 0;
+        }
+
+        .grid,
+        .row {
+          grid-template-columns: 1fr;
+        }
+
+        dd {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="eyebrow">ASVspoof AASIST v3</div>
+        <h1>Deepfake audio inference demo</h1>
+        <p class="subtitle">
+          Upload a short audio file and run the containerized AASIST model. Audio is sent for
+          inference only and is not stored by the demo service.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <div class="row">
+            <div>
+              <label for="endpoint">Inference endpoint</label>
+              <input id="endpoint" type="url" spellcheck="false" />
+            </div>
+            <div>
+              <label for="passcode">Demo passcode</label>
+              <input id="passcode" type="password" autocomplete="off" />
+            </div>
+          </div>
+
+          <label for="file">Audio file</label>
+          <input
+            id="file"
+            type="file"
+            accept=".wav,.flac,.mp3,.m4a,.aac,.ogg,.webm,audio/*,video/webm"
+            hidden
+          />
+          <div id="dropzone" class="dropzone" role="button" tabindex="0">
+            <div>
+              <strong>Drop audio here, or click to browse</strong>
+              <span>WAV, FLAC, MP3, M4A/AAC, OGG, or WebM. Max upload: 4 MiB.</span>
+              <div id="fileName" class="file-name"></div>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button id="analyze" disabled>Analyze audio</button>
+            <span id="status" class="status">Choose a file to begin.</span>
+          </div>
+        </div>
+
+        <aside class="card result">
+          <div id="verdict" class="verdict">
+            <div class="label">Classification</div>
+            <div class="value">Waiting</div>
+          </div>
+
+          <div>
+            <label>Spoof score</label>
+            <div class="meter" aria-hidden="true">
+              <div id="meterFill" class="meter-fill"></div>
+            </div>
+          </div>
+
+          <dl>
+            <dt>Score</dt>
+            <dd id="score">—</dd>
+            <dt>Threshold</dt>
+            <dd id="threshold">—</dd>
+            <dt>Duration</dt>
+            <dd id="duration">—</dd>
+            <dt>Windows</dt>
+            <dd id="windows">—</dd>
+            <dt>Format</dt>
+            <dd id="format">—</dd>
+            <dt>Request ID</dt>
+            <dd id="requestId">—</dd>
+          </dl>
+
+          <p class="footnote">
+            The 0.5 threshold is an initial demo boundary, not a calibrated real-world risk score.
+          </p>
+        </aside>
+      </section>
+    </main>
+
+    <script src="./config.js"></script>
+    <script>
+      const DEFAULT_ENDPOINT = window.AASIST_DEMO_CONFIG?.endpoint || "/infer";
+      const endpointInput = document.querySelector("#endpoint");
+      const passcodeInput = document.querySelector("#passcode");
+      const fileInput = document.querySelector("#file");
+      const dropzone = document.querySelector("#dropzone");
+      const fileName = document.querySelector("#fileName");
+      const analyzeButton = document.querySelector("#analyze");
+      const statusText = document.querySelector("#status");
+      const verdict = document.querySelector("#verdict");
+      const meterFill = document.querySelector("#meterFill");
+      const fields = {
+        score: document.querySelector("#score"),
+        threshold: document.querySelector("#threshold"),
+        duration: document.querySelector("#duration"),
+        windows: document.querySelector("#windows"),
+        format: document.querySelector("#format"),
+        requestId: document.querySelector("#requestId"),
+      };
+
+      let selectedFile = null;
+
+      const params = new URLSearchParams(window.location.search);
+      endpointInput.value =
+        params.get("endpoint") || localStorage.getItem("aasistDemoEndpoint") || DEFAULT_ENDPOINT;
+      passcodeInput.value = localStorage.getItem("aasistDemoPasscode") || "";
+
+      function setStatus(message, isError = false) {
+        statusText.textContent = message;
+        statusText.classList.toggle("error", isError);
+      }
+
+      function setFile(file) {
+        selectedFile = file;
+        fileName.textContent = file ? `${file.name} (${formatBytes(file.size)})` : "";
+        analyzeButton.disabled = !file;
+        resetResult();
+        setStatus(file ? "Ready to analyze." : "Choose a file to begin.");
+      }
+
+      function resetResult() {
+        verdict.className = "verdict";
+        verdict.querySelector(".value").textContent = "Waiting";
+        meterFill.style.width = "0%";
+        Object.values(fields).forEach((field) => {
+          field.textContent = "—";
+        });
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MiB`;
+      }
+
+      function formatNumber(value, digits = 4) {
+        if (typeof value !== "number" || Number.isNaN(value)) return "—";
+        return value.toFixed(digits);
+      }
+
+      function showResult(body) {
+        const classification = body.classification || "unknown";
+        verdict.className = `verdict ${classification}`;
+        verdict.querySelector(".value").textContent = classification;
+        const score = Number(body.spoof_score);
+        meterFill.style.width = `${Math.max(0, Math.min(1, score || 0)) * 100}%`;
+        fields.score.textContent = formatNumber(score, 6);
+        fields.threshold.textContent = formatNumber(Number(body.threshold), 2);
+        fields.duration.textContent =
+          typeof body.audio_duration_seconds === "number"
+            ? `${body.audio_duration_seconds.toFixed(2)}s`
+            : "—";
+        fields.windows.textContent = body.window_count ?? "—";
+        fields.format.textContent = body.input?.detected_format || "—";
+        fields.requestId.textContent = body.request_id || "—";
+      }
+
+      async function analyze() {
+        if (!selectedFile) return;
+        const endpoint = endpointInput.value.trim() || DEFAULT_ENDPOINT;
+        const passcode = passcodeInput.value;
+        localStorage.setItem("aasistDemoEndpoint", endpoint);
+        localStorage.setItem("aasistDemoPasscode", passcode);
+
+        analyzeButton.disabled = true;
+        setStatus("Running inference…");
+        try {
+          const headers = { "content-type": selectedFile.type || "application/octet-stream" };
+          if (passcode) headers["x-demo-passcode"] = passcode;
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: selectedFile,
+          });
+          const text = await response.text();
+          let body = {};
+          try {
+            body = text ? JSON.parse(text) : {};
+          } catch {
+            const preview = text ? `: ${text.slice(0, 140)}` : "";
+            throw new Error(
+              `Unexpected non-JSON response (${response.status}). The Lambda platform may have timed out or failed before the app returned JSON${preview}`
+            );
+          }
+          if (!response.ok) {
+            throw new Error(body.message || body.error || `Request failed (${response.status})`);
+          }
+          showResult(body);
+          setStatus("Inference complete.");
+        } catch (error) {
+          resetResult();
+          setStatus(error.message || "Inference failed.", true);
+        } finally {
+          analyzeButton.disabled = !selectedFile;
+        }
+      }
+
+      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          fileInput.click();
+        }
+      });
+      dropzone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dropzone.classList.add("dragging");
+      });
+      dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragging"));
+      dropzone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dropzone.classList.remove("dragging");
+        setFile(event.dataTransfer.files[0] || null);
+      });
+      fileInput.addEventListener("change", () => setFile(fileInput.files[0] || null));
+      analyzeButton.addEventListener("click", analyze);
+      resetResult();
+    </script>
+  </body>
+</html>

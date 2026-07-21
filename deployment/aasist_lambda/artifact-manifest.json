@@ -1,0 +1,30 @@
+{
+  "model": {
+    "name": "aasist-v3-codecaugment",
+    "repository": "arnavjain321/aasist-v3-codecaugment",
+    "revision": "main",
+    "files": {
+      "artifacts/aasist_v3_best.pt": {
+        "source_file": "aasist_v3_best.pt",
+        "bytes": 1264365,
+        "sha256": "36e27b4b2032c0a7448f7c9dab2db89efd607013b8596da2b7be8419814b83d0"
+      }
+    }
+  },
+  "implementation": {
+    "repository": "https://github.com/clovaai/aasist.git",
+    "revision": "a04c9863f63d44471dde8a6abcb3b082b07cd1d1",
+    "license": "MIT",
+    "files": {
+      "vendor/aasist/models/AASIST.py": {
+        "sha256": "9e0d3e80937dd0577beea7883098465a479da23a198ebc0d712abcc59b0bec50"
+      },
+      "vendor/aasist/LICENSE": {
+        "sha256": "da2e79b8592d166ef505224300968b80ebe1e4c217c43b94a5ec627d81cd4142"
+      },
+      "vendor/aasist/NOTICE": {
+        "sha256": "70edb07f04ddc88e7155d6e826495e5ef99c3b1f0bd4e1b7fa35897b3854dbd0"
+      }
+    }
+  }
+}

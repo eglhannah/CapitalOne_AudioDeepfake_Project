@@ -1,0 +1,64 @@
+{
+  "measured_at": "2026-06-24",
+  "host": {
+    "architecture": "arm64",
+    "container_runtime": "Docker Desktop",
+    "note": "linux/amd64 ran through emulation; timings are not AWS performance estimates"
+  },
+  "image": {
+    "name": "aasist-lambda:phase4",
+    "platform": "linux/amd64",
+    "local_size_bytes": 318432217,
+    "read_only_filesystem_verified": true,
+    "offline_inference_verified": true,
+    "private_samples_in_image": false
+  },
+  "parity": {
+    "LA_E_5849185.flac": {
+      "expected_classification": "bonafide",
+      "local_score": 0.007502698106691241,
+      "container_score": 0.007502717664465308,
+      "absolute_delta": 1.955777406692505e-08
+    },
+    "LA_E_6163791.flac": {
+      "expected_classification": "spoof",
+      "local_score": 1.0,
+      "container_score": 1.0,
+      "absolute_delta": 0.0
+    }
+  },
+  "active_container": {
+    "observed_memory_mib": 393.8,
+    "observed_cpu_percent": 99.91
+  },
+  "emulated_benchmark": [
+    {
+      "duration_seconds": 1,
+      "window_count": 1,
+      "round_trip_ms": 4696.97,
+      "model_inference_ms": 1286.69,
+      "cold_start": true,
+      "model_initialization_ms": 100.38
+    },
+    {
+      "duration_seconds": 10,
+      "window_count": 4,
+      "round_trip_ms": 5014.48,
+      "model_inference_ms": 4914.91,
+      "cold_start": false
+    },
+    {
+      "duration_seconds": 30,
+      "window_count": 14,
+      "round_trip_ms": 15932.21,
+      "model_inference_ms": 15745.14,
+      "cold_start": false
+    }
+  ],
+  "error_statuses": {
+    "wrong_method": 405,
+    "oversized_upload": 413,
+    "unsupported_format": 415,
+    "corrupt_audio": 422
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "checkpoint_epoch": 19,
+  "parameter_count": 297866,
+  "numpy_seed": 1234,
+  "samples": 64600,
+  "logits": [
+    -1.5501797199249268,
+    1.0057579278945923
+  ],
+  "spoof_score": 0.927971363067627,
+  "absolute_tolerance": 0.0001
+}

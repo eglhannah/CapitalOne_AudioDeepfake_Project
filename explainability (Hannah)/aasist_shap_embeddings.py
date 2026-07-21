@@ -45,21 +45,43 @@ print(f"Loaded. Params: {n_params:,}")
 
 audio_dir=Path(r"I:\My Drive\ASVSpoof_Data\unzipped2019\LA\LA\ASVspoof2019_LA_dev\flac")
 def extract_predictions(audio_dir, model):
-    predictions=[]
+    predictions = []
+
     audio_files = list(audio_dir.glob("*.flac"))
     random.shuffle(audio_files)
-    audio_files=audio_files[:1000]  # Limit to 1000 files for testing
+    audio_files = audio_files[:1000]  # Limit to 1000 files for testing
+
     for audio in tqdm(audio_files, total=len(audio_files)):
+        # Load audio
         waveform, sr = sf.read(audio)
-        waveform = torch.from_numpy(waveform).float().unsqueeze(0)
+
+        # Convert numpy array -> torch tensor
+        waveform = torch.from_numpy(waveform).float()
+
+        # Fix length for AASIST input (64600 samples)
+        if waveform.shape[0] < 64600:
+            waveform = torch.nn.functional.pad(
+                waveform, 
+                (0, 64600 - waveform.shape[0])
+            )
+        else:
+            waveform = waveform[:64600]
+
+        # Add batch dimension
+        waveform = waveform.unsqueeze(0)
+
+        # Model prediction
         out = predict(model, waveform)
+
         predictions.append({
             "file": audio.name,
             "spoof_prob": out["spoof_prob"].item(),
             "logits": out["logits"].squeeze(0).tolist(),
             "embedding": out["embedding"].squeeze(0).tolist()
-            })
+        })
+
     predictions = pd.DataFrame(predictions)
+
     return predictions, audio_files
 # predictions, audio_files = extract_predictions(audio_dir, model)
 # predictions.to_csv("aasist_v3_predictions.csv", index=False)
@@ -189,7 +211,7 @@ def extract_embeddings_audio(audio_files, model, target_length=TARGET_LENGTH) ->
 # print(audio_tensors.shape)
 
 
-def AASISTWrapper(model):
+def AASISTWrapper(model, embeddings):
     """
     A wrapper for the AASIST model to be used with SHAP.
     It returns the spoof class logit for a given audio input.
@@ -295,3 +317,5 @@ def explain_aasist(shap_values, embeddings, samples, audio_files, protocol, idx=
     
 # explain_aasist(idx=5, shap_values=shap_values, embeddings=embeddings, samples=samples, audio_files=audio_files, protocol=protocols_df)
 
+
+# %%

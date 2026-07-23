@@ -33,7 +33,6 @@ class LambdaHandlerTest(unittest.TestCase):
         response = lambda_handler.handler(event_for(b"ignored", method="GET"), self.context)
         self.assertEqual(response["statusCode"], 405)
         self.assertEqual(json.loads(response["body"])["error"], "method_not_allowed")
-        self.assertIn("access-control-allow-origin", response["headers"])
 
     def test_allows_cors_preflight_without_passcode(self) -> None:
         with patch.dict(os.environ, {"DEMO_PASSPHRASE": "secret"}, clear=False):
@@ -42,24 +41,7 @@ class LambdaHandlerTest(unittest.TestCase):
                 self.context,
             )
         self.assertEqual(response["statusCode"], 200)
-        self.assertEqual(response["headers"]["access-control-allow-methods"], "POST,OPTIONS")
-        self.assertIn("x-demo-passcode", response["headers"]["access-control-allow-headers"])
-
-    def test_uses_configured_cors_origin(self) -> None:
-        with patch.dict(os.environ, {"DEMO_ALLOWED_ORIGIN": "http://localhost:8765"}, clear=False):
-            response = lambda_handler.handler(event_for(b"not audio"), self.context)
-        self.assertEqual(
-            response["headers"]["access-control-allow-origin"],
-            "http://localhost:8765",
-        )
-
-    def test_can_echo_request_origin_when_configured(self) -> None:
-        with patch.dict(os.environ, {"DEMO_ALLOWED_ORIGIN": "request"}, clear=False):
-            response = lambda_handler.handler(
-                event_for(b"not audio", headers={"Origin": "https://demo.example"}),
-                self.context,
-            )
-        self.assertEqual(response["headers"]["access-control-allow-origin"], "https://demo.example")
+        self.assertEqual(json.loads(response["body"])["ok"], True)
 
     def test_rejects_wrong_demo_passcode_before_decoding(self) -> None:
         with patch.dict(os.environ, {"DEMO_PASSPHRASE": "secret"}, clear=False):

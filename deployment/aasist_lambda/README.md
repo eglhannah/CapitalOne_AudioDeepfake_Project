@@ -164,6 +164,21 @@ Supported demo upload containers remain WAV, FLAC, MP3, M4A/AAC, OGG, and WebM.
 Uploads are still limited to 4 MiB, decoded audio is still capped at 30 seconds,
 and audio is discarded immediately after inference.
 
+The demo client also provides local playback for the selected upload before and
+after inference. Playback first uses the original browser-selected file. If the
+browser cannot preview that container directly, the page attempts a local Web
+Audio decode and creates a temporary WAV preview in the browser. This does not
+store audio in S3, send audio to Lambda for playback, or change the original
+file sent for inference.
+
+The static client can also record up to 15 seconds from the user's microphone.
+The recording is kept in the browser as a temporary WebM/Opus-style Blob when
+supported by Chrome, becomes the active selected input, and is handled by the
+same preview and inference path as an uploaded file. Microphone access works on
+local trusted origins such as `http://127.0.0.1`; the hosted S3 website will
+need HTTPS, such as CloudFront in front of S3, before recording is available
+from AWS.
+
 ## Phase 6 AWS deployment
 
 Phase 6 deploys the v3 container and static browser demo to AWS with a small,
@@ -219,6 +234,13 @@ DEMO_PASSPHRASE='choose-a-temporary-demo-passphrase' \
 Open the printed S3 website URL in a browser, enter the same passphrase, upload
 audio, and run inference. The hosted page loads its Function URL from the
 generated `config.js` object uploaded during deployment.
+
+If only the static browser client changes, update the S3 page without rebuilding
+the Lambda image:
+
+```bash
+./aws/update-static-client.sh
+```
 
 Teardown everything created by the deployment:
 

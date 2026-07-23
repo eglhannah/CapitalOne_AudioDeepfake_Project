@@ -162,11 +162,95 @@
         opacity: 0.58;
       }
 
+      button.secondary {
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+        color: var(--text);
+      }
+
       .button-row {
         display: flex;
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
+      }
+
+      .recorder {
+        margin: 16px 0;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: rgba(32, 38, 54, 0.34);
+        padding: 14px;
+      }
+
+      .recorder-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .recorder-title label {
+        margin: 0;
+      }
+
+      .recording-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+
+      .recording-indicator::before {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--muted);
+      }
+
+      .recording-indicator.active {
+        color: var(--danger);
+      }
+
+      .recording-indicator.active::before {
+        background: var(--danger);
+        box-shadow: 0 0 0 5px rgba(255, 143, 143, 0.12);
+      }
+
+      .recorder-status {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+
+      .preview {
+        display: none;
+        margin: 16px 0;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: rgba(32, 38, 54, 0.48);
+        padding: 14px;
+      }
+
+      .preview.visible {
+        display: block;
+      }
+
+      .preview audio {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+      }
+
+      .preview-status {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.45;
       }
 
       .status {
@@ -304,6 +388,29 @@
             </div>
           </div>
 
+          <div class="recorder">
+            <div class="recorder-title">
+              <label>Record audio</label>
+              <span id="recordingIndicator" class="recording-indicator">Idle</span>
+            </div>
+            <div class="button-row">
+              <button id="startRecording" type="button" class="secondary">Start recording</button>
+              <button id="stopRecording" type="button" class="secondary" disabled>
+                Stop recording
+              </button>
+            </div>
+            <div id="recordingStatus" class="recorder-status">
+              Record up to 15 seconds from your microphone. Recording works on localhost now and
+              will require HTTPS when hosted.
+            </div>
+          </div>
+
+          <div id="preview" class="preview" aria-live="polite">
+            <label for="audioPreview">Audio preview</label>
+            <audio id="audioPreview" controls preload="metadata"></audio>
+            <div id="previewStatus" class="preview-status"></div>
+          </div>
+
           <div class="button-row">
             <button id="analyze" disabled>Analyze audio</button>
             <span id="status" class="status">Choose a file to begin.</span>
@@ -353,6 +460,13 @@
       const fileInput = document.querySelector("#file");
       const dropzone = document.querySelector("#dropzone");
       const fileName = document.querySelector("#fileName");
+      const preview = document.querySelector("#preview");
+      const previewStatus = document.querySelector("#previewStatus");
+      const audioPreview = document.querySelector("#audioPreview");
+      const startRecordingButton = document.querySelector("#startRecording");
+      const stopRecordingButton = document.querySelector("#stopRecording");
+      const recordingStatus = document.querySelector("#recordingStatus");
+      const recordingIndicator = document.querySelector("#recordingIndicator");
       const analyzeButton = document.querySelector("#analyze");
       const statusText = document.querySelector("#status");
       const verdict = document.querySelector("#verdict");
@@ -367,6 +481,16 @@
       };
 
       let selectedFile = null;
+      let previewObjectUrl = null;
+      let previewAttemptToken = 0;
+      let mediaRecorder = null;
+      let recordingStream = null;
+      let recordingChunks = [];
+      let recordingStartedAt = 0;
+      let recordingTimer = null;
+      let recordingStopTimer = null;
+      let lastRecordingDurationSeconds = null;
+      const MAX_RECORDING_SECONDS = 15;
 
       const params = new URLSearchParams(window.location.search);
       endpointInput.value =
@@ -378,12 +502,340 @@
         statusText.classList.toggle("error", isError);
       }
 
-      function setFile(file) {
+      function setRecordingStatus(message, isError = false) {
+        recordingStatus.textContent = message;
+        recordingStatus.classList.toggle("error", isError);
+      }
+
+      async function setFile(file, options = {}) {
+        const { source = "upload" } = options;
+        if (source !== "recording") {
+          resetRecordingPanelMessage();
+        }
         selectedFile = file;
         fileName.textContent = file ? `${file.name} (${formatBytes(file.size)})` : "";
         analyzeButton.disabled = !file;
         resetResult();
+        await updateAudioPreview(file);
         setStatus(file ? "Ready to analyze." : "Choose a file to begin.");
+      }
+
+      function clearAudioPreview() {
+        previewAttemptToken += 1;
+        audioPreview.removeAttribute("src");
+        audioPreview.load();
+        preview.classList.remove("visible");
+        previewStatus.textContent = "";
+        if (previewObjectUrl) {
+          URL.revokeObjectURL(previewObjectUrl);
+          previewObjectUrl = null;
+        }
+      }
+
+      function resetRecordingPanelMessage() {
+        if (!microphoneAvailable()) {
+          setRecordingStatus(
+            "Microphone recording is unavailable in this browser/context. Use http://127.0.0.1 locally or HTTPS when hosted.",
+            true
+          );
+          return;
+        }
+        setRecordingStatus(
+          "Record up to 15 seconds from your microphone. Recording works on localhost now and will require HTTPS when hosted."
+        );
+      }
+
+      function setPreviewSource(blob, message) {
+        if (previewObjectUrl) {
+          URL.revokeObjectURL(previewObjectUrl);
+        }
+        previewObjectUrl = URL.createObjectURL(blob);
+        audioPreview.src = previewObjectUrl;
+        preview.classList.add("visible");
+        previewStatus.textContent = message;
+      }
+
+      async function updateAudioPreview(file) {
+        clearAudioPreview();
+        if (!file) return;
+
+        const token = ++previewAttemptToken;
+        setPreviewSource(file, "Preparing local preview…");
+
+        try {
+          await waitForNativePreview(audioPreview, token);
+          if (token !== previewAttemptToken) return;
+          previewStatus.textContent = "Previewing the selected file locally. Audio is not uploaded for playback.";
+        } catch {
+          if (token !== previewAttemptToken) return;
+          previewStatus.textContent = "Native playback was unavailable; trying local WAV preview fallback…";
+          try {
+            const wavBlob = await convertFileToWavPreview(file);
+            if (token !== previewAttemptToken) return;
+            setPreviewSource(
+              wavBlob,
+              "Previewing a temporary WAV generated in your browser. Inference still uses the original uploaded file."
+            );
+            await waitForNativePreview(audioPreview, token);
+          } catch {
+            if (token !== previewAttemptToken) return;
+            clearAudioPreview();
+            preview.classList.add("visible");
+            previewStatus.textContent =
+              "Preview is unavailable in this browser for this file, but inference may still work.";
+          }
+        }
+      }
+
+      function waitForNativePreview(audioElement, token) {
+        return new Promise((resolve, reject) => {
+          if (audioElement.readyState >= HTMLMediaElement.HAVE_METADATA) {
+            resolve();
+            return;
+          }
+
+          const timeout = window.setTimeout(() => {
+            cleanup();
+            reject(new Error("Timed out while loading preview metadata"));
+          }, 2500);
+
+          function cleanup() {
+            window.clearTimeout(timeout);
+            audioElement.removeEventListener("loadedmetadata", handleLoaded);
+            audioElement.removeEventListener("canplay", handleLoaded);
+            audioElement.removeEventListener("error", handleError);
+          }
+
+          function handleLoaded() {
+            cleanup();
+            resolve();
+          }
+
+          function handleError() {
+            cleanup();
+            reject(new Error("Browser could not play the original file"));
+          }
+
+          if (token !== previewAttemptToken) {
+            cleanup();
+            reject(new Error("Preview superseded"));
+            return;
+          }
+
+          audioElement.addEventListener("loadedmetadata", handleLoaded, { once: true });
+          audioElement.addEventListener("canplay", handleLoaded, { once: true });
+          audioElement.addEventListener("error", handleError, { once: true });
+          audioElement.load();
+        });
+      }
+
+      async function convertFileToWavPreview(file) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+          throw new Error("Web Audio API is unavailable");
+        }
+
+        const audioContext = new AudioContextClass();
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const decoded = await audioContext.decodeAudioData(arrayBuffer);
+          return audioBufferToWavBlob(decoded);
+        } finally {
+          await audioContext.close().catch(() => {});
+        }
+      }
+
+      function audioBufferToWavBlob(audioBuffer) {
+        const channelCount = audioBuffer.numberOfChannels;
+        const sampleRate = audioBuffer.sampleRate;
+        const frameCount = audioBuffer.length;
+        const bytesPerSample = 2;
+        const blockAlign = channelCount * bytesPerSample;
+        const dataSize = frameCount * blockAlign;
+        const buffer = new ArrayBuffer(44 + dataSize);
+        const view = new DataView(buffer);
+
+        writeAscii(view, 0, "RIFF");
+        view.setUint32(4, 36 + dataSize, true);
+        writeAscii(view, 8, "WAVE");
+        writeAscii(view, 12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, channelCount, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * blockAlign, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bytesPerSample * 8, true);
+        writeAscii(view, 36, "data");
+        view.setUint32(40, dataSize, true);
+
+        const channels = Array.from({ length: channelCount }, (_, index) =>
+          audioBuffer.getChannelData(index)
+        );
+        let offset = 44;
+        for (let frame = 0; frame < frameCount; frame += 1) {
+          for (let channel = 0; channel < channelCount; channel += 1) {
+            const sample = Math.max(-1, Math.min(1, channels[channel][frame]));
+            view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+            offset += bytesPerSample;
+          }
+        }
+
+        return new Blob([buffer], { type: "audio/wav" });
+      }
+
+      function writeAscii(view, offset, text) {
+        for (let index = 0; index < text.length; index += 1) {
+          view.setUint8(offset + index, text.charCodeAt(index));
+        }
+      }
+
+      function microphoneAvailable() {
+        return Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+      }
+
+      function preferredRecordingMimeType() {
+        const candidates = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/mp4",
+          "audio/ogg;codecs=opus",
+        ];
+        return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+      }
+
+      async function startRecording() {
+        if (!microphoneAvailable()) {
+          setRecordingStatus(
+            "Microphone recording is unavailable here. Use http://127.0.0.1 locally or HTTPS when hosted.",
+            true
+          );
+          return;
+        }
+
+        try {
+          stopRecordingCleanup();
+          recordingChunks = [];
+          recordingStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
+
+          const mimeType = preferredRecordingMimeType();
+          mediaRecorder = new MediaRecorder(
+            recordingStream,
+            mimeType ? { mimeType, audioBitsPerSecond: 128000 } : { audioBitsPerSecond: 128000 }
+          );
+
+          mediaRecorder.addEventListener("dataavailable", (event) => {
+            if (event.data?.size > 0) {
+              recordingChunks.push(event.data);
+            }
+          });
+          mediaRecorder.addEventListener("start", markRecordingStarted, { once: true });
+          mediaRecorder.addEventListener("stop", finalizeRecording, { once: true });
+          startRecordingButton.disabled = true;
+          stopRecordingButton.disabled = true;
+          recordingIndicator.classList.remove("active");
+          recordingIndicator.textContent = "Starting";
+          setRecordingStatus("Starting microphone recording…");
+          mediaRecorder.start();
+        } catch (error) {
+          stopRecordingCleanup();
+          setRecordingStatus(
+            error?.name === "NotAllowedError"
+              ? "Microphone permission was denied. Allow microphone access and try again."
+              : error.message || "Could not start microphone recording.",
+            true
+          );
+        }
+      }
+
+      function markRecordingStarted() {
+        recordingStartedAt = Date.now();
+        startRecordingButton.disabled = true;
+        stopRecordingButton.disabled = false;
+        recordingIndicator.classList.add("active");
+        recordingIndicator.textContent = "Recording";
+        updateRecordingTimer();
+        recordingTimer = window.setInterval(updateRecordingTimer, 250);
+        recordingStopTimer = window.setTimeout(stopRecording, MAX_RECORDING_SECONDS * 1000);
+      }
+
+      function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+          stopRecordingButton.disabled = true;
+          setRecordingStatus("Finishing recording…");
+          mediaRecorder.stop();
+        } else {
+          stopRecordingCleanup();
+        }
+      }
+
+      async function finalizeRecording() {
+        const mimeType = mediaRecorder?.mimeType || preferredRecordingMimeType() || "audio/webm";
+        const extension = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+        const durationSeconds = lastRecordingDurationSeconds ?? Math.min(
+          MAX_RECORDING_SECONDS,
+          Math.max(0.1, (Date.now() - recordingStartedAt) / 1000)
+        );
+        const blob = new Blob(recordingChunks, { type: mimeType });
+        stopRecordingCleanup();
+
+        if (!blob.size) {
+          setRecordingStatus("No microphone audio was captured. Try recording again.", true);
+          return;
+        }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const recordedFile = new File([blob], `microphone-recording-${timestamp}.${extension}`, {
+          type: mimeType,
+          lastModified: Date.now(),
+        });
+        await setFile(recordedFile, { source: "recording" });
+        const previewDurationSeconds = Number.isFinite(audioPreview.duration)
+          ? audioPreview.duration
+          : durationSeconds;
+        setRecordingStatus(
+          `Recorded ${previewDurationSeconds.toFixed(1)}s from your microphone. You can play it below, analyze it, or record again.`
+        );
+      }
+
+      function updateRecordingTimer() {
+        const elapsedSeconds = Math.min(
+          MAX_RECORDING_SECONDS,
+          (Date.now() - recordingStartedAt) / 1000
+        );
+        lastRecordingDurationSeconds = elapsedSeconds;
+        const remainingSeconds = Math.max(0, MAX_RECORDING_SECONDS - elapsedSeconds);
+        setRecordingStatus(
+          `Recording… ${elapsedSeconds.toFixed(1)}s elapsed, ${remainingSeconds.toFixed(1)}s remaining.`
+        );
+      }
+
+      function stopRecordingCleanup() {
+        if (recordingTimer) {
+          window.clearInterval(recordingTimer);
+          recordingTimer = null;
+        }
+        if (recordingStopTimer) {
+          window.clearTimeout(recordingStopTimer);
+          recordingStopTimer = null;
+        }
+        if (recordingStream) {
+          recordingStream.getTracks().forEach((track) => track.stop());
+          recordingStream = null;
+        }
+        mediaRecorder = null;
+        recordingStartedAt = 0;
+        lastRecordingDurationSeconds = null;
+        startRecordingButton.disabled = false;
+        stopRecordingButton.disabled = true;
+        recordingIndicator.classList.remove("active");
+        recordingIndicator.textContent = "Idle";
       }
 
       function resetResult() {
@@ -478,10 +930,21 @@
       dropzone.addEventListener("drop", (event) => {
         event.preventDefault();
         dropzone.classList.remove("dragging");
-        setFile(event.dataTransfer.files[0] || null);
+        setFile(event.dataTransfer.files[0] || null, { source: "upload" });
       });
-      fileInput.addEventListener("change", () => setFile(fileInput.files[0] || null));
+      fileInput.addEventListener("change", () =>
+        setFile(fileInput.files[0] || null, { source: "upload" })
+      );
       analyzeButton.addEventListener("click", analyze);
+      startRecordingButton.addEventListener("click", startRecording);
+      stopRecordingButton.addEventListener("click", stopRecording);
+      if (!microphoneAvailable()) {
+        startRecordingButton.disabled = true;
+        setRecordingStatus(
+          "Microphone recording is unavailable in this browser/context. Use http://127.0.0.1 locally or HTTPS when hosted.",
+          true
+        );
+      }
       resetResult();
     </script>
   </body>

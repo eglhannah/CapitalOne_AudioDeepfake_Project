@@ -11,21 +11,27 @@ if [[ ! -x "$PYTHON_BIN" ]]; then
   exit 1
 fi
 
-DEPLOYMENT_INFO_FILE="$ROOT_DIR/aws/deployment-info.json"
-if [[ ! -f "$DEPLOYMENT_INFO_FILE" ]]; then
-  echo "Missing deployment info: $DEPLOYMENT_INFO_FILE" >&2
-  echo "Run ./aws/deploy.sh first, or rerun deploy to recreate this file." >&2
+if [[ ! -f "$BACKEND_INFO_FILE" || ! -f "$FRONTEND_INFO_FILE" ]]; then
+  echo "Missing backend/frontend deployment info." >&2
+  echo "Run ./aws/deploy-backend.sh and ./aws/deploy-frontend.sh first." >&2
   exit 1
 fi
 
-read -r DEPLOYED_ACCOUNT_ID DEPLOYED_REGION DEPLOYED_BUCKET FUNCTION_URL < <(
-  DEPLOYMENT_INFO_FILE="$DEPLOYMENT_INFO_FILE" "$PYTHON_BIN" - <<'PY'
+read -r DEPLOYED_ACCOUNT_ID DEPLOYED_REGION DEPLOYED_BUCKET DISTRIBUTION_ID FUNCTION_URL < <(
+  BACKEND_INFO_FILE="$BACKEND_INFO_FILE" FRONTEND_INFO_FILE="$FRONTEND_INFO_FILE" "$PYTHON_BIN" - <<'PY'
 import json
 import os
 from pathlib import Path
 
-info = json.loads(Path(os.environ["DEPLOYMENT_INFO_FILE"]).read_text(encoding="utf-8"))
-print(info["account_id"], info["region"], info["s3_bucket"], info["function_url"])
+backend = json.loads(Path(os.environ["BACKEND_INFO_FILE"]).read_text(encoding="utf-8"))
+frontend = json.loads(Path(os.environ["FRONTEND_INFO_FILE"]).read_text(encoding="utf-8"))
+print(
+    frontend["account_id"],
+    frontend["region"],
+    frontend["s3_bucket"],
+    frontend["cloudfront_distribution_id"],
+    backend["function_url"],
+)
 PY
 )
 
@@ -37,7 +43,8 @@ fi
 
 aws --region "$DEPLOYED_REGION" s3 sync "$ROOT_DIR/demo_client" "s3://${DEPLOYED_BUCKET}/" \
   --delete \
-  --exclude "config.js" >/dev/null
+  --exclude "config.js" \
+  --cache-control "no-cache" >/dev/null
 
 CONFIG_FILE="$(mktemp)"
 FUNCTION_URL="$FUNCTION_URL" "$PYTHON_BIN" - <<'PY' > "$CONFIG_FILE"
@@ -53,5 +60,24 @@ aws --region "$DEPLOYED_REGION" s3 cp "$CONFIG_FILE" "s3://${DEPLOYED_BUCKET}/co
   --content-type "application/javascript" \
   --cache-control "no-store" >/dev/null
 rm -f "$CONFIG_FILE"
+
+CALLER_REFERENCE="${PROJECT_NAME}-static-refresh-$(date +%s)"
+INVALIDATION_BATCH="$(mktemp)"
+CALLER_REFERENCE="$CALLER_REFERENCE" "$PYTHON_BIN" - <<'PY' > "$INVALIDATION_BATCH"
+import json
+import os
+
+print(json.dumps({
+    "Paths": {
+        "Quantity": 2,
+        "Items": ["/index.html", "/config.js"],
+    },
+    "CallerReference": os.environ["CALLER_REFERENCE"],
+}))
+PY
+aws cloudfront create-invalidation \
+  --distribution-id "$DISTRIBUTION_ID" \
+  --invalidation-batch "file://${INVALIDATION_BATCH}" >/dev/null
+rm -f "$INVALIDATION_BATCH"
 
 echo "Updated static demo client in s3://${DEPLOYED_BUCKET}/"

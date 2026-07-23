@@ -11,11 +11,17 @@ LAMBDA_TIMEOUT_SECONDS="${LAMBDA_TIMEOUT_SECONDS:-90}"
 LAMBDA_RESERVED_CONCURRENCY="${LAMBDA_RESERVED_CONCURRENCY:-}"
 LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-7}"
 PYTHON_BIN="${PYTHON_BIN:-$ROOT_DIR/.venv/bin/python}"
+CLOUDFRONT_PRICE_CLASS="${CLOUDFRONT_PRICE_CLASS:-PriceClass_100}"
+WAIT_FOR_CLOUDFRONT="${WAIT_FOR_CLOUDFRONT:-true}"
 
 FUNCTION_NAME="${FUNCTION_NAME:-$PROJECT_NAME}"
 ECR_REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-$PROJECT_NAME}"
 ROLE_NAME="${ROLE_NAME:-$PROJECT_NAME-role}"
 BUCKET_NAME="${BUCKET_NAME:-$PROJECT_NAME-${EXPECTED_AWS_ACCOUNT_ID:-unknown}-$AWS_REGION}"
+CLOUDFRONT_COMMENT="${CLOUDFRONT_COMMENT:-$PROJECT_NAME HTTPS static frontend}"
+BACKEND_INFO_FILE="$ROOT_DIR/aws/backend-info.json"
+FRONTEND_INFO_FILE="$ROOT_DIR/aws/frontend-info.json"
+LEGACY_DEPLOYMENT_INFO_FILE="$ROOT_DIR/aws/deployment-info.json"
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -49,6 +55,10 @@ require_expected_account() {
 
 website_endpoint() {
   echo "http://${BUCKET_NAME}.s3-website-${AWS_REGION}.amazonaws.com"
+}
+
+bucket_regional_domain_name() {
+  echo "${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com"
 }
 
 tag_args() {

@@ -14,6 +14,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SAMPLE = ROOT / "local_samples" / "LA_E_5849185.flac"
+BACKEND_INFO = ROOT / "aws" / "backend-info.json"
 DEPLOYMENT_INFO = ROOT / "aws" / "deployment-info.json"
 
 
@@ -32,9 +33,10 @@ def main() -> None:
 
     function_url = args.url
     if not function_url:
-        if not DEPLOYMENT_INFO.is_file():
-            raise SystemExit(f"Missing deployment info: {DEPLOYMENT_INFO}")
-        function_url = json.loads(DEPLOYMENT_INFO.read_text(encoding="utf-8"))["function_url"]
+        info_path = BACKEND_INFO if BACKEND_INFO.is_file() else DEPLOYMENT_INFO
+        if not info_path.is_file():
+            raise SystemExit(f"Missing backend deployment info: {BACKEND_INFO}")
+        function_url = json.loads(info_path.read_text(encoding="utf-8"))["function_url"]
 
     request = urllib.request.Request(
         function_url,

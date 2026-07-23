@@ -181,28 +181,37 @@ from AWS.
 
 ## Phase 6 AWS deployment
 
-Phase 6 deploys the v3 container and static browser demo to AWS with a small,
-teardown-friendly footprint:
+Phase 6 deploys the v3 container and HTTPS browser demo to AWS with a small,
+teardown-friendly footprint. Resources are split into backend and frontend
+layers so ECR/Lambda can be torn down between rehearsals while the slower
+CloudFront HTTPS frontend remains available.
 
-- ECR private repository for the Lambda container image.
-- Lambda function using the container image.
-- Lambda Function URL with `AuthType=NONE`, CORS, and app-level passcode.
-- S3 static website bucket for the demo client.
+- Backend: ECR private repository, Lambda container function, Function URL,
+  IAM role, and CloudWatch log retention.
+- Frontend: S3 static bucket and CloudFront HTTPS distribution.
+- Lambda Function URL uses `AuthType=NONE`, Function URL CORS, and app-level
+  passcode.
 - CloudWatch log retention set to 7 days by default.
 - Optional Lambda reserved concurrency through `LAMBDA_RESERVED_CONCURRENCY`.
-- Lambda defaults to 4096 MB memory and a 90-second timeout for demo reliability.
+- Lambda defaults to 2048 MB memory and a 90-second timeout.
+- CloudFront uses `PriceClass_100` by default and the generated
+  `*.cloudfront.net` HTTPS URL.
 
 The scripts refuse to run unless `EXPECTED_AWS_ACCOUNT_ID` matches
 `aws sts get-caller-identity`.
 
-Deploy:
+Deploy from nothing to the full HTTPS demo:
 
 ```bash
 cd /Users/chasecha/Desktop/CapitalOne_AudioDeepfake_Project/deployment/aasist_lambda
 EXPECTED_AWS_ACCOUNT_ID=857622871695 \
 AWS_REGION=us-east-1 \
 DEMO_PASSPHRASE='choose-a-temporary-demo-passphrase' \
-./aws/deploy.sh
+./aws/deploy-backend.sh
+
+EXPECTED_AWS_ACCOUNT_ID=857622871695 \
+AWS_REGION=us-east-1 \
+./aws/deploy-frontend.sh
 ```
 
 Override Lambda size if needed:
@@ -222,7 +231,8 @@ LAMBDA_RESERVED_CONCURRENCY=1
 ```
 
 The deploy script writes generated resource details to
-`aws/deployment-info.json`, which is ignored by Git.
+`aws/backend-info.json`, `aws/frontend-info.json`, and a compatibility
+`aws/deployment-info.json`. These generated files are ignored by Git.
 
 Smoke test the deployed Function URL with the known bonafide private sample:
 
@@ -231,25 +241,60 @@ DEMO_PASSPHRASE='choose-a-temporary-demo-passphrase' \
 ./aws/smoke-test.sh --expect bonafide
 ```
 
-Open the printed S3 website URL in a browser, enter the same passphrase, upload
-audio, and run inference. The hosted page loads its Function URL from the
-generated `config.js` object uploaded during deployment.
+Open the printed CloudFront URL in Chrome, enter the same passphrase, upload or
+record audio, and run inference. The hosted page loads its Function URL from the
+generated `config.js` object uploaded during frontend deployment. Microphone
+recording requires this HTTPS CloudFront URL; the S3 bucket URL is not the demo
+URL.
 
 If only the static browser client changes, update the S3 page without rebuilding
-the Lambda image:
+the Lambda image or changing CloudFront:
 
 ```bash
 ./aws/update-static-client.sh
 ```
 
-Teardown everything created by the deployment:
+To save backend/ECR costs after rehearsal while keeping HTTPS static hosting
+alive:
 
 ```bash
 EXPECTED_AWS_ACCOUNT_ID=857622871695 \
 AWS_REGION=us-east-1 \
 CONFIRM_TEARDOWN=aasist-audio-deepfake-demo \
-./aws/teardown.sh
+./aws/teardown-backend.sh
 ```
 
-After teardown, rerun `./aws/deploy.sh` with the same environment variables to
-recreate the demo before the presentation.
+To restore the backend later and refresh the CloudFront-hosted client with the
+new Function URL:
+
+```bash
+EXPECTED_AWS_ACCOUNT_ID=857622871695 \
+AWS_REGION=us-east-1 \
+DEMO_PASSPHRASE='choose-a-temporary-demo-passphrase' \
+./aws/deploy-backend.sh
+
+EXPECTED_AWS_ACCOUNT_ID=857622871695 \
+AWS_REGION=us-east-1 \
+./aws/deploy-frontend.sh
+```
+
+The first `deploy-frontend.sh` run creates CloudFront and can take many minutes.
+Later runs reuse the existing distribution, upload `index.html`/`config.js`, and
+create a small invalidation for `/index.html` and `/config.js`.
+
+After the final presentation, tear everything down:
+
+```bash
+EXPECTED_AWS_ACCOUNT_ID=857622871695 \
+AWS_REGION=us-east-1 \
+CONFIRM_TEARDOWN=aasist-audio-deepfake-demo \
+./aws/teardown-backend.sh
+
+EXPECTED_AWS_ACCOUNT_ID=857622871695 \
+AWS_REGION=us-east-1 \
+CONFIRM_TEARDOWN=aasist-audio-deepfake-demo \
+./aws/teardown-frontend.sh
+```
+
+`deploy.sh` and `teardown.sh` remain compatibility wrappers for
+`deploy-backend.sh` and `teardown-backend.sh`.

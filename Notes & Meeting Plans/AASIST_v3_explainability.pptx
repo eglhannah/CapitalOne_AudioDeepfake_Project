@@ -1,0 +1,48 @@
+Slide 1: Title
+- Detecting Audio Deepfakes: AASIST v3 + Explainability
+- UVA × Capital One Capstone — eglhannah / Arnav Jain et al.
+- Repo: eglhannah/CapitalOne_AudioDeepfake_Project
+
+Slide 2: Problem & Motivation
+- Voice-biometrics spoofing risk
+- TTS/VC/DeepFake threats to ASV
+- Need for robust countermeasures + explainability
+
+Slide 3: Benchmark / Data Context (ASVspoof)
+- Datasets: 2019 LA (training), 2021 LA eval (telephony codecs), 2021 DF eval (media compression)
+- Scale: 2019_eval ~71K utts; 2021_LA ~148K; 2021_DF ~534K
+- Attack diversity: 2019 (A01–A19); 2021 DF (100+ systems)
+
+Slide 4: AASIST Model & Reference
+- Architecture: AASIST pipeline → 128-d pooled embedding → classifier head
+- Local files: aasist/code/train_aasist_v3.py, simple_aasist.py
+
+Slide 5: Version History & Headline Results
+- v1 baseline: 2019_dev 0.90% EER; 2021_DF 22.95%
+- v2 RawBoost: improved many metrics; 2021_DF -> 17.20%
+
+Slide 6: v3 Goal & Approach
+- Goal: close 2021_DF gap (target <15% EER)
+- Approach: codec-realistic augmentation (ffmpeg round-trips)
+- Files: aasist/code/train_aasist_v3.py, sbatch_aasist_v3.sh
+
+Slide 7: Training & Evaluation Pipeline
+- Scripts: aasist/code/*.py and sbatch_*.sh
+- Checkpoint path noted in aasist/README.md (not in git)
+- Typical compute: ~3 hr on NVIDIA A6000
+
+Slide 8: Explainability — interpret_aasist_shap.py
+- Three levels: embedding-level SHAP, temporal occlusion/audio SHAP, spectrogram surrogate SHAP
+- Outputs written to interpretation_results/ (plots + CSVs)
+- Usage (schematic): python interpret_aasist_shap.py --data_dir <flac_dir> --protocol <trl.txt> --device cuda
+
+Slide 9: Key Explainability Outputs to Show
+- embedding_importance.csv, sample_explanations.csv, occlusion_sensitivity.csv
+- Plots: embedding_importance_bar.png, spectrogram_shap_aggregate.png, temporal_importance_overview.png, correct_vs_incorrect.png
+
+Slide 10: Next Steps & Summary
+- Run v3 training with codec augmentation
+- Run interpret pipeline before/after v3 to compare embedding importance and spectrogram SHAP
+- Contacts: Arnav Jain (owner), Hannah (explainability)
+
+Note: This file is a schematic representation of the 10-slide deck (plain text). If you want a true .pptx file (binary PowerPoint), I can generate and attach it; let me know and I will create the real .pptx and commit it to the same path.

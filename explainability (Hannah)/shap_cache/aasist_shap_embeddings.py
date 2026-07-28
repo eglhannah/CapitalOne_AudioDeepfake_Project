@@ -1,4 +1,4 @@
-#%%
+
 from __future__ import annotations
 from asyncio import protocols
 from typing import Tuple
@@ -315,7 +315,3 @@ def explain_aasist(shap_values, embeddings, samples, audio_files, protocol, idx=
     )
 
     
-# explain_aasist(idx=5, shap_values=shap_values, embeddings=embeddings, samples=samples, audio_files=audio_files, protocol=protocols_df)
-
-
-# %%

@@ -175,6 +175,28 @@
         flex-wrap: wrap;
       }
 
+      .option-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 16px 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.45;
+      }
+
+      .option-row input {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        accent-color: var(--accent);
+      }
+
+      .option-row strong {
+        display: block;
+        color: var(--text);
+      }
+
       .recorder {
         margin: 16px 0;
         border: 1px solid var(--border);
@@ -333,13 +355,141 @@
         line-height: 1.5;
       }
 
+      .explainability {
+        display: none;
+        margin-top: 18px;
+      }
+
+      .explainability.visible {
+        display: block;
+      }
+
+      .explainability h2 {
+        margin: 0 0 8px;
+        font-size: 1.35rem;
+      }
+
+      .explainability .explainability-intro {
+        margin: 0 0 18px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .explainability-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      .chart-card {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: rgba(32, 38, 54, 0.34);
+        padding: 14px;
+      }
+
+      .chart-card h3 {
+        margin: 0 0 6px;
+        font-size: 1rem;
+      }
+
+      .chart-card p {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+
+      .chart {
+        width: 100%;
+        min-height: 230px;
+        overflow: hidden;
+        border-radius: 14px;
+        background: #0c1018;
+      }
+
+      .chart-card.wide {
+        grid-column: 1 / -1;
+      }
+
+      .chart svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .legend span::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .legend .spoof-evidence::before {
+        background: var(--danger);
+      }
+
+      .legend .bonafide-evidence::before {
+        background: var(--accent-2);
+      }
+
+      .explainability-meta {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .meta-pill {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(12, 16, 24, 0.4);
+        padding: 10px;
+      }
+
+      .meta-pill span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .meta-pill strong {
+        display: block;
+        margin-top: 3px;
+      }
+
+      .explainability-notes {
+        margin: 14px 0 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
       @media (max-width: 760px) {
         main {
           padding: 30px 0;
         }
 
         .grid,
-        .row {
+        .row,
+        .explainability-grid,
+        .explainability-meta {
           grid-template-columns: 1fr;
         }
 
@@ -400,8 +550,7 @@
               </button>
             </div>
             <div id="recordingStatus" class="recorder-status">
-              Record up to 15 seconds from your microphone. Recording works on localhost now and
-              will require HTTPS when hosted.
+              Record up to 15 seconds from your microphone.
             </div>
           </div>
 
@@ -410,6 +559,14 @@
             <audio id="audioPreview" controls preload="metadata"></audio>
             <div id="previewStatus" class="preview-status"></div>
           </div>
+
+          <label class="option-row" for="includeExplanation">
+            <input id="includeExplanation" type="checkbox" />
+            <span>
+              <strong>Include explanation charts</strong>
+              Adds spectrogram, occlusion, and embedding contribution visuals.
+            </span>
+          </label>
 
           <div class="button-row">
             <button id="analyze" disabled>Analyze audio</button>
@@ -450,6 +607,57 @@
           </p>
         </aside>
       </section>
+
+      <section id="explainability" class="card explainability" aria-live="polite">
+        <h2>Model explanation</h2>
+        <div class="explainability-grid">
+          <div class="chart-card">
+            <h3>Audio spectrogram summary</h3>
+            <p>Brighter cells indicate stronger log-energy in that time/frequency region.</p>
+            <div id="spectrogramChart" class="chart"></div>
+          </div>
+
+          <div class="chart-card">
+            <h3>Occlusion sensitivity</h3>
+            <p>Each bar shows the score change after muting that time segment.</p>
+            <div id="occlusionChart" class="chart"></div>
+            <div class="legend">
+              <span class="spoof-evidence">Supports spoof</span>
+              <span class="bonafide-evidence">Pushes away from spoof</span>
+            </div>
+          </div>
+
+          <div class="chart-card wide">
+            <h3>Embedding contribution</h3>
+            <p>
+              Top latent AASIST embedding dimensions by final classifier contribution. This is a
+              lightweight approximation.
+            </p>
+            <div id="embeddingChart" class="chart"></div>
+            <div class="legend">
+              <span class="spoof-evidence">Pushes toward spoof</span>
+              <span class="bonafide-evidence">Pushes toward bonafide</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="explainability-meta">
+          <div class="meta-pill">
+            <span>Explained window</span>
+            <strong id="explainDuration">—</strong>
+          </div>
+          <div class="meta-pill">
+            <span>Baseline score</span>
+            <strong id="explainBaseline">—</strong>
+          </div>
+          <div class="meta-pill">
+            <span>Explanation time</span>
+            <strong id="explainRuntime">—</strong>
+          </div>
+        </div>
+
+        <p id="explainNotes" class="explainability-notes"></p>
+      </section>
     </main>
 
     <script src="./config.js"></script>
@@ -468,6 +676,7 @@
       const recordingStatus = document.querySelector("#recordingStatus");
       const recordingIndicator = document.querySelector("#recordingIndicator");
       const analyzeButton = document.querySelector("#analyze");
+      const includeExplanationInput = document.querySelector("#includeExplanation");
       const statusText = document.querySelector("#status");
       const verdict = document.querySelector("#verdict");
       const meterFill = document.querySelector("#meterFill");
@@ -479,6 +688,14 @@
         format: document.querySelector("#format"),
         requestId: document.querySelector("#requestId"),
       };
+      const explainabilityPanel = document.querySelector("#explainability");
+      const spectrogramChart = document.querySelector("#spectrogramChart");
+      const occlusionChart = document.querySelector("#occlusionChart");
+      const embeddingChart = document.querySelector("#embeddingChart");
+      const explainDuration = document.querySelector("#explainDuration");
+      const explainBaseline = document.querySelector("#explainBaseline");
+      const explainRuntime = document.querySelector("#explainRuntime");
+      const explainNotes = document.querySelector("#explainNotes");
 
       let selectedFile = null;
       let previewObjectUrl = null;
@@ -496,6 +713,7 @@
       endpointInput.value =
         params.get("endpoint") || localStorage.getItem("aasistDemoEndpoint") || DEFAULT_ENDPOINT;
       passcodeInput.value = localStorage.getItem("aasistDemoPasscode") || "";
+      includeExplanationInput.checked = localStorage.getItem("aasistDemoIncludeExplanation") === "true";
 
       function setStatus(message, isError = false) {
         statusText.textContent = message;
@@ -541,7 +759,7 @@
           return;
         }
         setRecordingStatus(
-          "Record up to 15 seconds from your microphone. Recording works on localhost now and will require HTTPS when hosted."
+          "Record up to 15 seconds from your microphone."
         );
       }
 
@@ -565,7 +783,7 @@
         try {
           await waitForNativePreview(audioPreview, token);
           if (token !== previewAttemptToken) return;
-          previewStatus.textContent = "Previewing the selected file locally. Audio is not uploaded for playback.";
+          previewStatus.textContent = "Previewing the selected file locally.";
         } catch {
           if (token !== previewAttemptToken) return;
           previewStatus.textContent = "Native playback was unavailable; trying local WAV preview fallback…";
@@ -845,6 +1063,7 @@
         Object.values(fields).forEach((field) => {
           field.textContent = "—";
         });
+        resetExplainability();
       }
 
       function formatBytes(bytes) {
@@ -873,21 +1092,206 @@
         fields.windows.textContent = body.window_count ?? "—";
         fields.format.textContent = body.input?.detected_format || "—";
         fields.requestId.textContent = body.request_id || "—";
+        showExplainability(body.explainability);
+      }
+
+      function resetExplainability() {
+        explainabilityPanel.classList.remove("visible");
+        spectrogramChart.textContent = "";
+        occlusionChart.textContent = "";
+        embeddingChart.textContent = "";
+        explainDuration.textContent = "—";
+        explainBaseline.textContent = "—";
+        explainRuntime.textContent = "—";
+        explainNotes.textContent = "";
+      }
+
+      function showExplainability(explanation) {
+        if (!explanation) {
+          resetExplainability();
+          return;
+        }
+
+        drawSpectrogram(explanation.spectrogram);
+        drawOcclusion(explanation.occlusion || []);
+        drawEmbeddingContributions(explanation.embedding_contributions || []);
+        explainDuration.textContent =
+          typeof explanation.analyzed_duration_seconds === "number"
+            ? `${explanation.analyzed_duration_seconds.toFixed(2)}s`
+            : "—";
+        explainBaseline.textContent = formatNumber(Number(explanation.baseline_spoof_score), 6);
+        explainRuntime.textContent =
+          typeof explanation.inference_ms === "number"
+            ? `${Math.round(explanation.inference_ms)} ms`
+            : "—";
+        explainNotes.textContent = Array.isArray(explanation.notes)
+          ? explanation.notes.join(" ")
+          : "";
+        explainabilityPanel.classList.add("visible");
+      }
+
+      function drawSpectrogram(spectrogram) {
+        const values = spectrogram?.values;
+        if (!Array.isArray(values) || !values.length || !Array.isArray(values[0])) {
+          spectrogramChart.textContent = "No spectrogram data returned.";
+          return;
+        }
+
+        const bands = values.length;
+        const frames = values[0].length;
+        const cellWidth = 520 / frames;
+        const cellHeight = 220 / bands;
+        const rects = [];
+
+        for (let band = 0; band < bands; band += 1) {
+          for (let frame = 0; frame < frames; frame += 1) {
+            const value = Math.max(0, Math.min(1, Number(values[band][frame]) || 0));
+            const hue = 220 - value * 165;
+            const lightness = 14 + value * 58;
+            rects.push(
+              `<rect x="${(frame * cellWidth).toFixed(2)}" y="${((bands - band - 1) * cellHeight).toFixed(2)}" width="${Math.ceil(cellWidth + 0.4)}" height="${Math.ceil(cellHeight + 0.4)}" fill="hsl(${hue.toFixed(1)} 82% ${lightness.toFixed(1)}%)"></rect>`
+            );
+          }
+        }
+
+        spectrogramChart.innerHTML = `
+          <svg viewBox="0 0 560 260" role="img" aria-label="Audio spectrogram summary">
+            <rect width="560" height="260" fill="#0c1018"></rect>
+            <g transform="translate(30 16)">${rects.join("")}</g>
+            <text x="290" y="250" fill="#aeb7ca" text-anchor="middle" font-size="12">Time</text>
+            <text x="12" y="130" fill="#aeb7ca" text-anchor="middle" font-size="12" transform="rotate(-90 12 130)">Frequency band</text>
+          </svg>
+        `;
+      }
+
+      function drawOcclusion(segments) {
+        if (!Array.isArray(segments) || !segments.length) {
+          occlusionChart.textContent = "No occlusion data returned.";
+          return;
+        }
+
+        const width = 560;
+        const height = 260;
+        const chartLeft = 34;
+        const chartTop = 18;
+        const chartWidth = 500;
+        const chartHeight = 200;
+        const maxAbs = Math.max(
+          0.000001,
+          ...segments.map((segment) => Math.abs(Number(segment.delta_spoof_score) || 0))
+        );
+        const zeroY = chartTop + chartHeight / 2;
+        const barGap = 3;
+        const barWidth = chartWidth / segments.length - barGap;
+        const bars = segments
+          .map((segment, index) => {
+            const delta = Number(segment.delta_spoof_score) || 0;
+            const magnitude = (Math.abs(delta) / maxAbs) * (chartHeight / 2 - 8);
+            const x = chartLeft + index * (chartWidth / segments.length) + barGap / 2;
+            const y = delta >= 0 ? zeroY - magnitude : zeroY;
+            const color = delta >= 0 ? "#ff8f8f" : "#79a7ff";
+            return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${Math.max(2, barWidth).toFixed(2)}" height="${Math.max(1, magnitude).toFixed(2)}" rx="2" fill="${color}">
+              <title>${segment.start_seconds}s–${segment.end_seconds}s: ${delta.toFixed(6)}</title>
+            </rect>`;
+          })
+          .join("");
+
+        occlusionChart.innerHTML = `
+          <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Occlusion sensitivity chart">
+            <rect width="${width}" height="${height}" fill="#0c1018"></rect>
+            <line x1="${chartLeft}" x2="${chartLeft + chartWidth}" y1="${zeroY}" y2="${zeroY}" stroke="#566278" stroke-dasharray="4 5"></line>
+            ${bars}
+            <text x="${chartLeft}" y="238" fill="#aeb7ca" font-size="12">0s</text>
+            <text x="${chartLeft + chartWidth}" y="238" fill="#aeb7ca" text-anchor="end" font-size="12">${segments[segments.length - 1].end_seconds}s</text>
+            <text x="${width / 2}" y="252" fill="#aeb7ca" text-anchor="middle" font-size="12">Time</text>
+            <text x="13" y="${zeroY - 54}" fill="#ff8f8f" text-anchor="middle" font-size="11" transform="rotate(-90 13 ${zeroY - 54})">spoof evidence</text>
+            <text x="13" y="${zeroY + 64}" fill="#79a7ff" text-anchor="middle" font-size="11" transform="rotate(-90 13 ${zeroY + 64})">away from spoof</text>
+          </svg>
+        `;
+      }
+
+      function drawEmbeddingContributions(contributions) {
+        if (!Array.isArray(contributions) || !contributions.length) {
+          embeddingChart.textContent = "No embedding contribution data returned.";
+          return;
+        }
+
+        const width = 760;
+        const rowHeight = 24;
+        const chartLeft = 145;
+        const chartTop = 20;
+        const chartWidth = 560;
+        const chartHeight = contributions.length * rowHeight;
+        const height = chartTop + chartHeight + 44;
+        const maxAbs = Math.max(
+          0.000001,
+          ...contributions.map((item) => Math.abs(Number(item.contribution) || 0))
+        );
+        const zeroX = chartLeft + chartWidth / 2;
+        const bars = contributions
+          .map((item, index) => {
+            const contribution = Number(item.contribution) || 0;
+            const magnitude = (Math.abs(contribution) / maxAbs) * (chartWidth / 2 - 8);
+            const x = contribution >= 0 ? zeroX : zeroX - magnitude;
+            const y = chartTop + index * rowHeight + 4;
+            const color = contribution >= 0 ? "#ff8f8f" : "#79a7ff";
+            const label = `dim ${item.dimension}`;
+            return `
+              <text x="${chartLeft - 10}" y="${y + 13}" fill="#aeb7ca" text-anchor="end" font-size="12">${escapeSvg(label)}</text>
+              <rect x="${x.toFixed(2)}" y="${y}" width="${Math.max(1, magnitude).toFixed(2)}" height="16" rx="4" fill="${color}">
+                <title>${escapeSvg(label)}: ${contribution.toFixed(6)} (${item.direction})</title>
+              </rect>
+            `;
+          })
+          .join("");
+
+        embeddingChart.innerHTML = `
+          <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Embedding contribution chart">
+            <rect width="${width}" height="${height}" fill="#0c1018"></rect>
+            <line x1="${zeroX}" x2="${zeroX}" y1="${chartTop - 8}" y2="${chartTop + chartHeight}" stroke="#566278" stroke-dasharray="4 5"></line>
+            ${bars}
+            <text x="${chartLeft}" y="${height - 14}" fill="#79a7ff" font-size="12">bonafide</text>
+            <text x="${chartLeft + chartWidth}" y="${height - 14}" fill="#ff8f8f" text-anchor="end" font-size="12">spoof</text>
+          </svg>
+        `;
+      }
+
+      function escapeSvg(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function endpointWithExplainParam(endpoint, includeExplanation) {
+        const url = new URL(endpoint, window.location.href);
+        url.searchParams.set("explain", includeExplanation ? "1" : "0");
+        if (!/^https?:/i.test(endpoint) && !endpoint.startsWith("/")) {
+          return `${url.pathname}${url.search}${url.hash}`;
+        }
+        if (endpoint.startsWith("/")) {
+          return `${url.pathname}${url.search}${url.hash}`;
+        }
+        return url.toString();
       }
 
       async function analyze() {
         if (!selectedFile) return;
         const endpoint = endpointInput.value.trim() || DEFAULT_ENDPOINT;
         const passcode = passcodeInput.value;
+        const includeExplanation = includeExplanationInput.checked;
         localStorage.setItem("aasistDemoEndpoint", endpoint);
         localStorage.setItem("aasistDemoPasscode", passcode);
+        localStorage.setItem("aasistDemoIncludeExplanation", String(includeExplanation));
 
         analyzeButton.disabled = true;
-        setStatus("Running inference…");
+        resetExplainability();
+        setStatus(includeExplanation ? "Running inference with explanation…" : "Running inference…");
         try {
           const headers = { "content-type": selectedFile.type || "application/octet-stream" };
           if (passcode) headers["x-demo-passcode"] = passcode;
-          const response = await fetch(endpoint, {
+          const response = await fetch(endpointWithExplainParam(endpoint, includeExplanation), {
             method: "POST",
             headers,
             body: selectedFile,

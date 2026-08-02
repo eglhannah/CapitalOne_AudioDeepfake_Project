@@ -54,6 +54,20 @@ class LambdaHandlerTest(unittest.TestCase):
         self.assertEqual(wrong["statusCode"], 401)
         self.assertEqual(json.loads(missing["body"])["error"], "unauthorized")
 
+    def test_explainability_requires_query_opt_in_and_enabled_environment(self) -> None:
+        self.assertFalse(lambda_handler._include_explainability(event_for(b"audio")))
+        self.assertTrue(
+            lambda_handler._include_explainability(
+                {**event_for(b"audio"), "queryStringParameters": {"explain": "1"}}
+            )
+        )
+        with patch.dict(os.environ, {"AASIST_EXPLAINABILITY": "0"}, clear=False):
+            self.assertFalse(
+                lambda_handler._include_explainability(
+                    {**event_for(b"audio"), "queryStringParameters": {"explain": "1"}}
+                )
+            )
+
     def test_accepts_correct_demo_passcode(self) -> None:
         with patch.dict(os.environ, {"DEMO_PASSPHRASE": "secret"}, clear=False):
             response = lambda_handler.handler(

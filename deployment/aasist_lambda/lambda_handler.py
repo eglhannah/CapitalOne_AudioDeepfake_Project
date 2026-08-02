@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import time
+from urllib.parse import parse_qs
 from typing import Any
 
 from aasist_inference import AudioInferenceService
@@ -95,6 +96,32 @@ def _decode_event_body(event: dict[str, Any]) -> bytes:
     return body.encode("utf-8")
 
 
+def _query_parameters(event: dict[str, Any]) -> dict[str, str]:
+    parameters = event.get("queryStringParameters")
+    if isinstance(parameters, dict):
+        return {str(key).lower(): str(value) for key, value in parameters.items()}
+
+    raw_query = event.get("rawQueryString")
+    if isinstance(raw_query, str) and raw_query:
+        parsed = parse_qs(raw_query, keep_blank_values=True)
+        return {key.lower(): values[-1] if values else "" for key, values in parsed.items()}
+
+    return {}
+
+
+def _include_explainability(event: dict[str, Any]) -> bool:
+    explanations_allowed = os.environ.get("AASIST_EXPLAINABILITY", "1").lower() not in {
+        "0",
+        "false",
+        "no",
+    }
+    if not explanations_allowed:
+        return False
+
+    explain = _query_parameters(event).get("explain", "")
+    return explain.lower() in {"1", "true", "yes", "on"}
+
+
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     global _COLD_START
 
@@ -137,7 +164,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     try:
         payload = _decode_event_body(event)
-        result = _SERVICE.score_bytes(payload)
+        result = _SERVICE.score_bytes(payload, include_explainability=_include_explainability(event))
         response_body = result.to_dict()
         response_body.update(
             {

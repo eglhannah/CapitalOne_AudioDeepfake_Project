@@ -34,12 +34,16 @@ class AudioInferenceService:
         payload: bytes,
         *,
         ffmpeg_binary: str | None = None,
+        include_explainability: bool = False,
     ) -> AudioFileInferenceResult:
         decoded = decode_audio_bytes(payload, ffmpeg_binary=ffmpeg_binary)
-        inference = self._scorer.score(decoded.waveform, sample_rate=decoded.sample_rate)
+        inference = self._scorer.score(
+            decoded.waveform,
+            sample_rate=decoded.sample_rate,
+            include_explainability=include_explainability,
+        )
         return AudioFileInferenceResult(
             detected_format=decoded.detected_format,
             encoded_size_bytes=decoded.encoded_size_bytes,
             inference=inference,
         )
-

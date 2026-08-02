@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 import urllib.error
 import urllib.request
+from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO_CLIENT_DIR = ROOT / "demo_client"
@@ -26,10 +27,15 @@ DEFAULT_LAMBDA_URL = "http://127.0.0.1:9000/2015-03-31/functions/function/invoca
 MAX_PROXY_UPLOAD_BYTES = 4 * 1024 * 1024
 
 
-def _event_for(payload: bytes, headers: dict[str, str]) -> dict[str, Any]:
+def _event_for(payload: bytes, headers: dict[str, str], raw_query_string: str = "") -> dict[str, Any]:
+    parsed_query = parse_qs(raw_query_string, keep_blank_values=True)
     return {
         "version": "2.0",
         "headers": headers,
+        "rawQueryString": raw_query_string,
+        "queryStringParameters": {
+            key: values[-1] if values else "" for key, values in parsed_query.items()
+        },
         "requestContext": {
             "requestId": "local-demo-request",
             "http": {"method": "POST"},
@@ -50,7 +56,7 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_OPTIONS(self) -> None:  # noqa: N802 - stdlib callback name
-        if self.path != "/infer":
+        if self._request_path() != "/infer":
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         self.send_response(HTTPStatus.OK)
@@ -60,7 +66,7 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib callback name
-        if self.path != "/infer":
+        if self._request_path() != "/infer":
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
@@ -98,7 +104,9 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
             event_headers["x-demo-passcode"] = passcode
 
         try:
-            lambda_response = self._invoke_lambda(_event_for(payload, event_headers))
+            lambda_response = self._invoke_lambda(
+                _event_for(payload, event_headers, self._raw_query_string())
+            )
         except urllib.error.URLError as error:
             self._send_json(
                 HTTPStatus.BAD_GATEWAY,
@@ -128,6 +136,12 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
         )
         with urllib.request.urlopen(request, timeout=90.0) as response:
             return json.load(response)
+
+    def _request_path(self) -> str:
+        return urlsplit(self.path).path
+
+    def _raw_query_string(self) -> str:
+        return urlsplit(self.path).query
 
     def _send_json(self, status: HTTPStatus, body: dict[str, Any]) -> None:
         encoded_body = json.dumps(body, separators=(",", ":")).encode("utf-8")

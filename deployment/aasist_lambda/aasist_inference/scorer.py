@@ -18,6 +18,7 @@ from inference_contract import (
 from model_loader import load_model
 
 from .errors import InvalidThresholdError
+from .explainability import explain_waveform
 from .results import InferenceResult, WindowResult
 from .waveform import iter_windows, validate_waveform
 
@@ -47,7 +48,13 @@ class AASISTScorer:
     def threshold(self) -> float:
         return self._threshold
 
-    def score(self, waveform: np.ndarray, *, sample_rate: int = SAMPLE_RATE) -> InferenceResult:
+    def score(
+        self,
+        waveform: np.ndarray,
+        *,
+        sample_rate: int = SAMPLE_RATE,
+        include_explainability: bool = False,
+    ) -> InferenceResult:
         validated = validate_waveform(waveform, sample_rate)
         window_results: list[WindowResult] = []
 
@@ -89,4 +96,9 @@ class AASISTScorer:
             model_revision=MODEL_REVISION,
             checkpoint_epoch=self._metadata.get("epoch"),
             windows=tuple(window_results),
+            explainability=(
+                explain_waveform(self._model, validated, sample_rate=sample_rate)
+                if include_explainability
+                else None
+            ),
         )

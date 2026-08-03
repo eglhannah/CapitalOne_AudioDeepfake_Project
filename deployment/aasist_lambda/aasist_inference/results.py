@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from .explainability import ExplanationResult
+
 
 @dataclass(frozen=True)
 class WindowResult:
@@ -27,6 +29,7 @@ class InferenceResult:
     model_revision: str
     checkpoint_epoch: int | None
     windows: tuple[WindowResult, ...]
+    explainability: ExplanationResult | None = None
 
     def to_dict(self, *, include_windows: bool = False) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -42,5 +45,6 @@ class InferenceResult:
         }
         if include_windows:
             result["windows"] = [asdict(window) for window in self.windows]
+        if self.explainability is not None:
+            result["explainability"] = self.explainability.to_dict()
         return result
-

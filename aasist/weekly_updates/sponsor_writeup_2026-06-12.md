@@ -14,7 +14,7 @@ This week the team addressed all three recommendations from last sync. On the AA
 
 **Honest disclosure.** 2021 LA regressed from 5.67% to 8.01%. Hypothesis is that RawBoost's codec simulation (mu-law / A-law via companding) does not exactly match real telephony codec transmission. Codec realistic augmentation is the next sprint exploration.
 
-**SHAP justification (Recommendation 2).** Hannah owns the explainability workstream. Her decision document is in the team repo at `explainability (Hannah)/SHAP_Features_Justification.md`. Her approach is SHAP applied to five handcrafted acoustic features (jitter, pitch variability, MFCC variance, RMS dynamic range, HNR), which is complementary to my model side iWAX work.
+**SHAP justification (Recommendation 2).** Hannah owns the explainability workstream. Her decision document is in the team repo at `explainability/SHAP_Features_Justification.md`. Her approach is SHAP applied to five handcrafted acoustic features (jitter, pitch variability, MFCC variance, RMS dynamic range, HNR), which is complementary to my model side iWAX work.
 
 **Latency profiling (Recommendation 3).** AASIST inference profiled across 1s, 2s, 4s, 5s, 10s, and 30s clips using a 4 second sliding window with 50% overlap. Worst case GPU latency: 110 ms on a 30 second utterance (14 windows). Worst case CPU latency: 2.8 seconds. Both are 86 to 2167 times under the PRD's 4 minute target.
 

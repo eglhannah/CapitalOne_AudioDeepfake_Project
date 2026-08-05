@@ -84,7 +84,7 @@ For production, the operating point can be shifted along the ROC curve based on 
 - Wave2Vec model + predictions: `w2v/` directory
 - Ensemble script + results: `aasist/results/v3_predictions/compute_ensemble.py` and `aasist/results/v3_ensemble_metrics.json`
 - AWS Lambda deployment code: `deployment/aasist_lambda/`
-- SHAP notebooks: `explainability (Hannah)/`
+- SHAP notebooks: `explainability/`
 
 ## Overall Status
 

@@ -8,6 +8,6 @@ python "path to simple_model.py" \
   --protocol "path to protocol folder" \
   --audio_dir "path to flac folder"
 
-2021 DF predictions are under: test_predictions_fixed2.csv
+2021 DF predictions are under: test_predictions_2021_DF.csv
 2021 LA predictions are under: test_predictions_LA_2021.csv
-2019 LA predictions are under: TBD
+2019 LA predictions are under: test_predictions_LA_2019.csv

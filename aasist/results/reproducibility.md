@@ -88,8 +88,8 @@ git clone https://github.com/eglhannah/CapitalOne_AudioDeepfake_Project.git
 
 # Create branch workspace and copy AASIST scripts from this folder
 mkdir -p aasist_branch
-cp "CapitalOne_AudioDeepfake_Project/aasist (Arnav)/code/"*.py aasist_branch/
-cp "CapitalOne_AudioDeepfake_Project/aasist (Arnav)/code/"*.sh aasist_branch/
+cp "CapitalOne_AudioDeepfake_Project/aasist/code/"*.py aasist_branch/
+cp "CapitalOne_AudioDeepfake_Project/aasist/code/"*.sh aasist_branch/
 chmod +x aasist_branch/*.sh
 ```
 
@@ -142,8 +142,8 @@ Each eval writes:
 After all four evals complete:
 
 ```bash
-python "CapitalOne_AudioDeepfake_Project/aasist (Arnav)/code/plot_degradation_curve.py"  # ./aasist_degradation_curve.png
-python "CapitalOne_AudioDeepfake_Project/aasist (Arnav)/code/plot_eer_curve.py"          # ./aasist_training_curve.png
+python "CapitalOne_AudioDeepfake_Project/aasist/code/plot_degradation_curve.py"  # ./aasist_degradation_curve.png
+python "CapitalOne_AudioDeepfake_Project/aasist/code/plot_eer_curve.py"          # ./aasist_training_curve.png
 ```
 
 Both plots have the EER numbers and history inlined as Python constants — they don't read from JSON files. If numbers change, edit the constants at the top of each script.
